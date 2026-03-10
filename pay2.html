@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>업체 결제 (수량형) - 아두이노 수경재배기</title>
+
+  <!-- PortOne V2 Browser SDK (CDN) -->
+  <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; line-height: 1.5; }
+    .card { max-width: 560px; margin: 0 auto; border: 1px solid #ddd; border-radius: 12px; padding: 20px; }
+    h2 { margin: 0 0 8px 0; }
+    .muted { color: #666; font-size: 13px; margin: 8px 0 14px; }
+    .row { display: flex; gap: 10px; margin: 10px 0; }
+    .col { flex: 1; }
+    label { display: block; font-size: 12px; color: #444; margin: 0 0 6px; }
+    input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
+    input[readonly] { background: #f7f7f7; }
+    button { width: 100%; padding: 14px 16px; font-size: 16px; border: 0; border-radius: 10px; cursor: pointer; }
+    .warn { color: #b45309; font-size: 13px; margin-top: 10px; }
+    .ok { color: #166534; font-size: 13px; margin-top: 10px; }
+    .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
+    .hr { height: 1px; background: #eee; margin: 14px 0; }
+    .price-notice { color: #1d4ed8; font-size: 13px; margin: 4px 0 0 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>업체 결제 (수량형)</h2>
+    <p class="muted">
+      결제는 카드 기준입니다. 팝업 차단을 해제해주세요. 모바일은 리다이렉트 복귀 방식일 수 있습니다.
+    </p>
+
+    <div class="row">
+      <div class="col">
+        <label>업체명 (필수)</label>
+        <input id="company" type="text" placeholder="예: ○○초등학교 / ○○기업" required />
+      </div>
+      <div class="col">
+        <label>발주 번호 (자동)</label>
+        <input id="refNo" type="text" readonly />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label>상품명</label>
+        <input id="itemName" type="text" value="아두이노 수경재배기" />
+      </div>
+      <div class="col">
+        <label>담당자명 (필수)</label>
+        <input id="buyerName" type="text" placeholder="예: 홍길동" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label>연락처 (필수)</label>
+        <input id="phoneNumber" type="tel" placeholder="예: 01012345678" required />
+      </div>
+      <div class="col">
+        <label>이메일 (선택)</label>
+        <input id="email" type="email" placeholder="예: buyer@company.com" />
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <div class="col">
+        <label>단가 (원)</label>
+        <input id="unitPrice" type="number" min="0" step="1" readonly />
+      </div>
+      <div class="col">
+        <label>수량 (필수)</label>
+        <input id="qty" type="number" min="1" step="1" value="1" required />
+      </div>
+    </div>
+    <p class="price-notice">30개 이상 주문 시 교육기관 단체 가격(16,000원)이 자동 적용됩니다.</p>
+
+    <div class="row">
+      <div class="col">
+        <label>총액 (원)</label>
+        <input id="totalAmount" type="number" readonly />
+      </div>
+      <div class="col">
+        <label>주문명 (자동)</label>
+        <input id="orderName" type="text" readonly />
+      </div>
+    </div>
+
+    <button id="payBtn">결제 진행</button>
+
+    <p id="result" class="muted"></p>
+  </div>
+
+  <script>
+    console.log("B2B QTY PAY PAGE v2 - 수경재배기");
+
+    // === PortOne 설정 ===
+    const STORE_ID = "store-ca55a732-987a-45f4-9ea0-85b8586352e6";
+    const CHANNEL_KEY = "channel-key-72ab829f-dbed-4c92-9f0e-1b91e85e0421";
+
+    const APPS_SCRIPT_URL = "";
+    const ENABLE_ORDER_LOG = false;
+
+    // === 당일 날짜+시간으로 발주번호 자동 생성 ===
+    // 예: ORD-20260310-1432
+    function generateRefNo() {
+      const now = new Date();
+      const date = now.getFullYear().toString()
+        + String(now.getMonth() + 1).padStart(2, "0")
+        + String(now.getDate()).padStart(2, "0");
+      const time = String(now.getHours()).padStart(2, "0")
+        + String(now.getMinutes()).padStart(2, "0");
+      return `ORD-${date}-${time}`;
+    }
+
+    function getParams_() {
+      const u = new URL(location.href);
+      return {
+        item: u.searchParams.get("item"),
+        company: u.searchParams.get("company"),
+        paymentId: u.searchParams.get("paymentId"),
+        code: u.searchParams.get("code"),
+        message: u.searchParams.get("message"),
+      };
+    }
+
+    function toInt_(v, fallback) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.trunc(n);
+    }
+
+    function sanitizeRef_(s) {
+      return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16);
+    }
+
+    function newPaymentId(refNo) {
+      const ts = Date.now().toString(36);
+      const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+      const ref = sanitizeRef_(refNo);
+      return ref ? `p_${ts}_${ref}_${rand}` : `p_${ts}_${rand}`;
+    }
+
+    function getUnitPriceByQty(qty) {
+      return qty >= 30 ? 16000 : 18000;
+    }
+
+    function calcTotal_(unitPrice, qty) {
+      unitPrice = toInt_(unitPrice, 0);
+      qty = toInt_(qty, 0);
+      if (unitPrice < 0 || qty <= 0) return 0;
+      return unitPrice * qty;
+    }
+
+    function setResult_(text, kind) {
+      const el = document.getElementById("result");
+      el.className = kind || "muted";
+      el.textContent = text;
+    }
+
+    function syncDerivedFields_() {
+      const company = document.getElementById("company").value.trim();
+      const refNo = document.getElementById("refNo").value.trim();
+      const itemName = document.getElementById("itemName").value.trim() || "상품";
+      const qty = toInt_(document.getElementById("qty").value, 1);
+
+      const unitPrice = getUnitPriceByQty(qty);
+      document.getElementById("unitPrice").value = unitPrice;
+
+      const total = calcTotal_(unitPrice, qty);
+      document.getElementById("totalAmount").value = total;
+
+      const parts = [];
+      if (refNo) parts.push(refNo);
+      if (company) parts.push(company);
+      parts.push(itemName);
+      parts.push(`${qty}개`);
+      document.getElementById("orderName").value = parts.join(" / ");
+    }
+
+    async function logOrder_(payload) {
+      if (!ENABLE_ORDER_LOG || !APPS_SCRIPT_URL) return null;
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    }
+
+    async function requestPay() {
+      syncDerivedFields_();
+
+      const company = document.getElementById("company").value.trim();
+      const refNo = document.getElementById("refNo").value.trim();
+      const itemName = document.getElementById("itemName").value.trim() || "상품";
+      const buyerName = document.getElementById("buyerName").value.trim();
+      const phoneNumber = document.getElementById("phoneNumber").value.trim();
+      const email = document.getElementById("email").value.trim();
+
+      const unitPrice = toInt_(document.getElementById("unitPrice").value, 0);
+      const qty = toInt_(document.getElementById("qty").value, 0);
+      const totalAmount = calcTotal_(unitPrice, qty);
+      const orderName = document.getElementById("orderName").value || "주문";
+
+      if (!company) {
+        setResult_("업체명을 입력해주세요.", "err");
+        return;
+      }
+      if (!buyerName) {
+        setResult_("담당자명을 입력해주세요.", "err");
+        return;
+      }
+      if (!phoneNumber) {
+        setResult_("연락처를 입력해주세요.", "err");
+        return;
+      }
+      if (qty <= 0) {
+        setResult_("수량을 1 이상으로 입력해주세요.", "err");
+        return;
+      }
+      if (totalAmount <= 0) {
+        setResult_("단가/수량을 확인해주세요.", "err");
+        return;
+      }
+
+      const paymentId = newPaymentId(refNo);
+      const redirectUrl = `${location.origin}${location.pathname}${location.search ? location.search : ""}`;
+
+      const response = await window.PortOne.requestPayment({
+        storeId: STORE_ID,
+        channelKey: CHANNEL_KEY,
+        paymentId,
+        orderName,
+        totalAmount,
+        currency: "CURRENCY_KRW",
+        payMethod: "CARD",
+        redirectUrl,
+        customer: {
+          fullName: buyerName || company,
+          phoneNumber: phoneNumber || undefined,
+          email: email || undefined,
+        },
+      });
+
+      if (response && response.code !== undefined) {
+        setResult_(`실패: ${response.code} / ${response.message || ""}`, "err");
+        return;
+      }
+
+      if (response && response.paymentId) {
+        setResult_(`요청 완료: paymentId=${response.paymentId}`, "ok");
+
+        try {
+          const out = await logOrder_({
+            paymentId: response.paymentId,
+            orderName,
+            expectedAmount: totalAmount,
+            company,
+            refNo,
+            itemName,
+            unitPrice,
+            qty,
+            buyerName,
+            phoneNumber,
+            email,
+          });
+
+          if (out) {
+            setResult_(
+              out.verified
+                ? `결제 확인 완료: ${response.paymentId} (검증 OK)`
+                : `결제는 진행됐지만 확인 필요: ${response.paymentId} (검증 FAIL)`,
+              out.verified ? "ok" : "warn"
+            );
+          }
+        } catch (e) {
+          setResult_(`결제 요청은 완료. 주문 기록은 확인 필요: ${response.paymentId}`, "warn");
+        }
+      } else {
+        setResult_("요청 완료. (리다이렉트 방식이면 결제 후 자동 복귀합니다)", "muted");
+      }
+    }
+
+    // === 초기 세팅 ===
+    (function init() {
+      const p = getParams_();
+
+      // 발주번호 자동 생성 (예: ORD-20260310-1432)
+      document.getElementById("refNo").value = generateRefNo();
+
+      if (p.item) document.getElementById("itemName").value = p.item;
+      if (p.company) document.getElementById("company").value = p.company;
+
+      // 리다이렉트 복귀 처리
+      if (p.paymentId) {
+        if (p.code) {
+          setResult_(`실패: ${p.code} / ${p.message || ""}`, "err");
+        } else {
+          setResult_(`리다이렉트 복귀: paymentId=${p.paymentId}`, "ok");
+        }
+
+        const u = new URL(location.href);
+        u.searchParams.delete("paymentId");
+        u.searchParams.delete("code");
+        u.searchParams.delete("message");
+        history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+      }
+
+      syncDerivedFields_();
+
+      ["company", "itemName", "qty"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", syncDerivedFields_);
+      });
+
+      document.getElementById("payBtn").addEventListener("click", () => {
+        setResult_("", "muted");
+        requestPay().catch((e) => setResult_(`오류: ${e?.message || e}`, "err"));
+      });
+    })();
+  </script>
+</body>
+</html>

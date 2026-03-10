@@ -39,8 +39,8 @@
         <input id="company" type="text" placeholder="예: ○○초등학교 / ○○기업" required />
       </div>
       <div class="col">
-        <label>견적/발주 번호 (필수)</label>
-        <input id="refNo" type="text" placeholder="예: Q-20260305-01" required />
+        <label>발주 번호 (자동)</label>
+        <input id="refNo" type="text" readonly />
       </div>
     </div>
 
@@ -50,15 +50,15 @@
         <input id="itemName" type="text" value="에듀키트" />
       </div>
       <div class="col">
-        <label>담당자명 (선택)</label>
-        <input id="buyerName" type="text" placeholder="예: 홍길동" />
+        <label>담당자명 (필수)</label>
+        <input id="buyerName" type="text" placeholder="예: 홍길동" required />
       </div>
     </div>
 
     <div class="row">
       <div class="col">
-        <label>연락처 (선택)</label>
-        <input id="phoneNumber" type="tel" placeholder="예: 01012345678" />
+        <label>연락처 (필수)</label>
+        <input id="phoneNumber" type="tel" placeholder="예: 01012345678" required />
       </div>
       <div class="col">
         <label>이메일 (선택)</label>
@@ -78,7 +78,7 @@
         <input id="qty" type="number" min="1" step="1" value="1" required />
       </div>
     </div>
-    <p id="priceNotice" class="price-notice">30개 이상 주문 시 교육기관 단체 가격(13,900원)이 자동 적용됩니다.</p>
+    <p class="price-notice">30개 이상 주문 시 교육기관 단체 가격(13,900원)이 자동 적용됩니다.</p>
 
     <div class="row">
       <div class="col">
@@ -97,23 +97,31 @@
   </div>
 
   <script>
-    console.log("B2B QTY PAY PAGE v1");
+    console.log("B2B QTY PAY PAGE v2");
 
     // === PortOne 설정 ===
     const STORE_ID = "store-ca55a732-987a-45f4-9ea0-85b8586352e6";
     const CHANNEL_KEY = "channel-key-72ab829f-dbed-4c92-9f0e-1b91e85e0421";
 
-    // (선택) Apps Script 엔드포인트 - 주문 기록/검증을 붙이고 싶으면 URL 넣고 enable로 바꾸기
-    const APPS_SCRIPT_URL = ""; // 예: "https://script.google.com/macros/s/AAAA.../exec"
+    const APPS_SCRIPT_URL = "";
     const ENABLE_ORDER_LOG = false;
 
-    // === 링크 파라미터로 단가/상품명/참조번호 자동 세팅 가능 ===
+    // === 당일 날짜+시간으로 발주번호 자동 생성 ===
+    // 예: ORD-20260310-1432
+    function generateRefNo() {
+      const now = new Date();
+      const date = now.getFullYear().toString()
+        + String(now.getMonth() + 1).padStart(2, "0")
+        + String(now.getDate()).padStart(2, "0");
+      const time = String(now.getHours()).padStart(2, "0")
+        + String(now.getMinutes()).padStart(2, "0");
+      return `ORD-${date}-${time}`;
+    }
+
     function getParams_() {
       const u = new URL(location.href);
       return {
-        unit: u.searchParams.get("unit"),
         item: u.searchParams.get("item"),
-        ref: u.searchParams.get("ref"),
         company: u.searchParams.get("company"),
         paymentId: u.searchParams.get("paymentId"),
         code: u.searchParams.get("code"),
@@ -128,12 +136,12 @@
     }
 
     function sanitizeRef_(s) {
-      return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12);
+      return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16);
     }
 
     function newPaymentId(refNo) {
       const ts = Date.now().toString(36);
-      const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 14);
+      const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
       const ref = sanitizeRef_(refNo);
       return ref ? `p_${ts}_${ref}_${rand}` : `p_${ts}_${rand}`;
     }
@@ -159,17 +167,14 @@
       const company = document.getElementById("company").value.trim();
       const refNo = document.getElementById("refNo").value.trim();
       const itemName = document.getElementById("itemName").value.trim() || "상품";
-
       const qty = toInt_(document.getElementById("qty").value, 1);
 
-      // 수량에 따라 단가 자동 변경
       const unitPrice = getUnitPriceByQty(qty);
       document.getElementById("unitPrice").value = unitPrice;
 
       const total = calcTotal_(unitPrice, qty);
       document.getElementById("totalAmount").value = total;
 
-      // 주문명 자동 구성: 업체/견적/상품/수량
       const parts = [];
       if (refNo) parts.push(refNo);
       if (company) parts.push(company);
@@ -180,7 +185,6 @@
 
     async function logOrder_(payload) {
       if (!ENABLE_ORDER_LOG || !APPS_SCRIPT_URL) return null;
-
       const res = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,7 +199,6 @@
       const company = document.getElementById("company").value.trim();
       const refNo = document.getElementById("refNo").value.trim();
       const itemName = document.getElementById("itemName").value.trim() || "상품";
-
       const buyerName = document.getElementById("buyerName").value.trim();
       const phoneNumber = document.getElementById("phoneNumber").value.trim();
       const email = document.getElementById("email").value.trim();
@@ -205,8 +208,16 @@
       const totalAmount = calcTotal_(unitPrice, qty);
       const orderName = document.getElementById("orderName").value || "주문";
 
-      if (!company || !refNo) {
-        setResult_("업체명과 견적/발주 번호는 필수입니다.", "err");
+      if (!company) {
+        setResult_("업체명을 입력해주세요.", "err");
+        return;
+      }
+      if (!buyerName) {
+        setResult_("담당자명을 입력해주세요.", "err");
+        return;
+      }
+      if (!phoneNumber) {
+        setResult_("연락처를 입력해주세요.", "err");
         return;
       }
       if (qty <= 0) {
@@ -230,7 +241,6 @@
         currency: "CURRENCY_KRW",
         payMethod: "CARD",
         redirectUrl,
-
         customer: {
           fullName: buyerName || company,
           phoneNumber: phoneNumber || undefined,
@@ -281,8 +291,10 @@
     (function init() {
       const p = getParams_();
 
+      // 발주번호 자동 생성 (예: ORD-20260310-1432)
+      document.getElementById("refNo").value = generateRefNo();
+
       if (p.item) document.getElementById("itemName").value = p.item;
-      if (p.ref) document.getElementById("refNo").value = p.ref;
       if (p.company) document.getElementById("company").value = p.company;
 
       // 리다이렉트 복귀 처리
@@ -300,11 +312,9 @@
         history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
       }
 
-      // 계산 필드 동기화
       syncDerivedFields_();
 
-      // 이벤트 바인딩
-      ["company", "refNo", "itemName", "qty"].forEach((id) => {
+      ["company", "itemName", "qty"].forEach((id) => {
         document.getElementById(id).addEventListener("input", syncDerivedFields_);
       });
 

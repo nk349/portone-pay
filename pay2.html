@@ -22,6 +22,7 @@
     .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
     .hr { height: 1px; background: #eee; margin: 14px 0; }
     .price-notice { color: #1d4ed8; font-size: 13px; margin: 4px 0 0 0; }
+    .shipping-notice { color: #666; font-size: 12px; margin: 4px 0 0 0; }
 
     /* 결제 완료 팝업 */
     .modal-overlay {
@@ -72,7 +73,7 @@
     <div class="row">
       <div class="col">
         <label>업체명 (필수)</label>
-        <input id="company" type="text" placeholder="예: ○○학교 / ○○기업" required />
+        <input id="company" type="text" placeholder="예: ○○초등학교 / ○○기업" required />
       </div>
       <div class="col">
         <label>발주 번호 (자동)</label>
@@ -125,7 +126,19 @@
 
     <div class="row">
       <div class="col">
-        <label>총액 (원)</label>
+        <label>배송비 (원)</label>
+        <input id="shippingFee" type="number" readonly />
+      </div>
+      <div class="col">
+        <label>상품 금액 (원)</label>
+        <input id="itemAmount" type="number" readonly />
+      </div>
+    </div>
+    <p class="shipping-notice" id="shippingNotice"></p>
+
+    <div class="row">
+      <div class="col">
+        <label>총액 (배송비 포함, 원)</label>
         <input id="totalAmount" type="number" readonly />
       </div>
       <div class="col">
@@ -154,7 +167,7 @@
   </div>
 
   <script>
-    console.log("B2B QTY PAY PAGE v3 - 수경재배기");
+    console.log("B2B QTY PAY PAGE v4 - 수경재배기");
 
     const STORE_ID = "store-ca55a732-987a-45f4-9ea0-85b8586352e6";
     const CHANNEL_KEY = "channel-key-434e0b0b-3307-4b42-a16a-7ced0b0dff86";
@@ -179,7 +192,6 @@
         paymentId: u.searchParams.get("paymentId"),
         code: u.searchParams.get("code"),
         message: u.searchParams.get("message"),
-        // 리다이렉트 복귀 시 주문 정보 복원용
         _on: u.searchParams.get("_on"),
         _oa: u.searchParams.get("_oa"),
       };
@@ -206,7 +218,24 @@
       return qty >= 30 ? 16000 : 18000;
     }
 
-    function calcTotal_(unitPrice, qty) {
+    // 배송비 계산
+    // 1~19개: 3,000원 / 20~29개: 4,000원 / 30개 이상: 30개 단위당 5,000원
+    function getShippingFee(qty) {
+      if (qty <= 0) return 0;
+      if (qty < 20) return 3000;
+      if (qty < 30) return 4000;
+      return Math.ceil(qty / 30) * 5000;
+    }
+
+    function getShippingNotice(qty) {
+      if (qty <= 0) return "";
+      if (qty < 20) return "배송비 3,000원 (1~19개 기준)";
+      if (qty < 30) return "배송비 4,000원 (20~29개 기준)";
+      const boxes = Math.ceil(qty / 30);
+      return `배송비 ${(boxes * 5000).toLocaleString("ko-KR")}원 (30개 단위 박스 ${boxes}개 기준)`;
+    }
+
+    function calcItemAmount_(unitPrice, qty) {
       unitPrice = toInt_(unitPrice, 0);
       qty = toInt_(qty, 0);
       if (unitPrice < 0 || qty <= 0) return 0;
@@ -228,7 +257,14 @@
       const unitPrice = getUnitPriceByQty(qty);
       document.getElementById("unitPrice").value = unitPrice;
 
-      const total = calcTotal_(unitPrice, qty);
+      const itemAmount = calcItemAmount_(unitPrice, qty);
+      document.getElementById("itemAmount").value = itemAmount;
+
+      const shippingFee = getShippingFee(qty);
+      document.getElementById("shippingFee").value = shippingFee;
+      document.getElementById("shippingNotice").textContent = getShippingNotice(qty);
+
+      const total = itemAmount + shippingFee;
       document.getElementById("totalAmount").value = total;
 
       const parts = [];
@@ -239,7 +275,6 @@
       document.getElementById("orderName").value = parts.join(" / ");
     }
 
-    // 결제 완료 후 폼 전체 비활성화 (중복 결제 방지)
     function lockForm_() {
       ["company", "itemName", "buyerName", "phoneNumber", "email", "address", "qty"].forEach((id) => {
         const el = document.getElementById(id);
@@ -281,7 +316,9 @@
 
       const unitPrice = toInt_(document.getElementById("unitPrice").value, 0);
       const qty = toInt_(document.getElementById("qty").value, 0);
-      const totalAmount = calcTotal_(unitPrice, qty);
+      const itemAmount = calcItemAmount_(unitPrice, qty);
+      const shippingFee = getShippingFee(qty);
+      const totalAmount = itemAmount + shippingFee;
       const orderName = document.getElementById("orderName").value || "주문";
 
       if (!company) { setResult_("업체명을 입력해주세요.", "err"); return; }
@@ -292,8 +329,6 @@
       if (totalAmount <= 0) { setResult_("단가/수량을 확인해주세요.", "err"); return; }
 
       const paymentId = newPaymentId(refNo);
-
-      // 리다이렉트 복귀 시 주문명/금액 복원을 위해 URL에 포함
       const base = `${location.origin}${location.pathname}${location.search ? location.search : ""}`;
       const redirectUrl = `${base}${base.includes("?") ? "&" : "?"}_on=${encodeURIComponent(orderName)}&_oa=${totalAmount}`;
 
@@ -320,12 +355,12 @@
 
       if (response && response.paymentId) {
         showSuccessModal(orderName, totalAmount, response.paymentId);
-
         try {
           const out = await logOrder_({
             paymentId: response.paymentId,
             orderName, expectedAmount: totalAmount,
             company, refNo, itemName, unitPrice, qty,
+            itemAmount, shippingFee,
             buyerName, phoneNumber, email, address,
           });
           if (out) {
@@ -351,7 +386,6 @@
       if (p.item) document.getElementById("itemName").value = p.item;
       if (p.company) document.getElementById("company").value = p.company;
 
-      // 리다이렉트 복귀 처리 - URL에서 주문명/금액 복원
       if (p.paymentId) {
         if (p.code) {
           setResult_(`실패: ${p.code} / ${p.message || ""}`, "err");
@@ -360,7 +394,6 @@
           const totalAmount = toInt_(p._oa, 0);
           showSuccessModal(orderName, totalAmount, p.paymentId);
         }
-
         const u = new URL(location.href);
         ["paymentId", "code", "message", "_on", "_oa"].forEach(k => u.searchParams.delete(k));
         history.replaceState({}, "", u.pathname + (u.search !== "?" ? u.search : ""));

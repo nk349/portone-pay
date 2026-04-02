@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>주문 조회 및 인쇄 - 켬 스튜디오</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; line-height: 1.6; }
+    .card { max-width: 560px; margin: 0 auto; border: 1px solid #ddd; border-radius: 12px; padding: 24px; }
+    h2 { margin: 0 0 6px; }
+    .muted { color: #666; font-size: 13px; margin: 0 0 20px; }
+    label { display: block; font-size: 12px; color: #444; margin: 0 0 6px; }
+    input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; }
+    .btn { width: 100%; padding: 13px; font-size: 15px; border: 0; border-radius: 10px; cursor: pointer; }
+    .btn-search { background: #1d4ed8; color: #fff; }
+    .btn-print { background: #166534; color: #fff; margin-top: 16px; }
+    .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
+    .hr { height: 1px; background: #eee; margin: 20px 0; }
+
+    /* 주문 결과 */
+    #resultBox { display: none; margin-top: 20px; }
+    .receipt-title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+    .receipt-sub { font-size: 12px; color: #888; margin: 0 0 16px; }
+    .info-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .info-row .label { color: #666; }
+    .info-row .value { font-weight: 500; text-align: right; }
+    .total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; padding: 12px 0 0; color: #166534; }
+
+    /* 인쇄 스타일 */
+    @media print {
+      body { padding: 0; }
+      .card { border: none; padding: 0; max-width: 100%; }
+      .no-print { display: none !important; }
+      #resultBox { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>주문 조회 / 영수증 출력</h2>
+    <p class="muted">결제 시 받은 발주번호와 연락처를 입력해주세요.</p>
+
+    <div class="no-print">
+      <label>발주번호</label>
+      <input id="refNo" type="text" placeholder="예: ORD-20260310-1432" />
+      <label>연락처</label>
+      <input id="phone" type="tel" placeholder="예: 01012345678" />
+      <button class="btn btn-search" id="searchBtn">주문 조회</button>
+      <p id="errMsg" class="err"></p>
+    </div>
+
+    <div id="resultBox">
+      <div class="hr no-print"></div>
+      <p class="receipt-title">켬 스튜디오 주문 영수증</p>
+      <p class="receipt-sub" id="receiptDate"></p>
+
+      <div class="info-row"><span class="label">발주번호</span><span class="value" id="r-refNo"></span></div>
+      <div class="info-row"><span class="label">결제번호</span><span class="value" id="r-paymentId"></span></div>
+      <div class="info-row"><span class="label">업체명</span><span class="value" id="r-company"></span></div>
+      <div class="info-row"><span class="label">담당자</span><span class="value" id="r-buyer"></span></div>
+      <div class="info-row"><span class="label">연락처</span><span class="value" id="r-phone"></span></div>
+      <div class="info-row"><span class="label">배송주소</span><span class="value" id="r-address"></span></div>
+      <div class="hr"></div>
+      <div class="info-row"><span class="label">상품명</span><span class="value" id="r-item"></span></div>
+      <div class="info-row"><span class="label">단가</span><span class="value" id="r-unitPrice"></span></div>
+      <div class="info-row"><span class="label">수량</span><span class="value" id="r-qty"></span></div>
+      <div class="info-row"><span class="label">상품금액</span><span class="value" id="r-itemAmount"></span></div>
+      <div class="info-row"><span class="label">배송비</span><span class="value" id="r-shipping"></span></div>
+      <div class="total-row"><span>총 결제금액</span><span id="r-total"></span></div>
+
+      <button class="btn btn-print no-print" onclick="window.print()">영수증 인쇄</button>
+    </div>
+  </div>
+
+  <script>
+    // Apps Script 배포 후 URL로 교체하세요
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNNN9dRd3EATcAZV6uXx90TtTo4ryIPv-yI1BuXAFGAPfT-OnJR_dsBrc_LcoaeztPlw/exec";
+
+    function fmt(n) {
+      return Number(n || 0).toLocaleString("ko-KR") + "원";
+    }
+
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+      const refNo = document.getElementById("refNo").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const errMsg = document.getElementById("errMsg");
+      errMsg.textContent = "";
+
+      if (!refNo || !phone) {
+        errMsg.textContent = "발주번호와 연락처를 모두 입력해주세요.";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${APPS_SCRIPT_URL}?refNo=${encodeURIComponent(refNo)}&phone=${encodeURIComponent(phone)}`);
+        const data = await res.json();
+
+        if (!data.ok) {
+          errMsg.textContent = data.error || "주문 정보를 찾을 수 없습니다.";
+          return;
+        }
+
+        const o = data.order;
+        document.getElementById("receiptDate").textContent = `결제일시: ${o["저장시각"] || ""}`;
+        document.getElementById("r-refNo").textContent = o["발주번호"] || "";
+        document.getElementById("r-paymentId").textContent = o["결제ID"] || "";
+        document.getElementById("r-company").textContent = o["업체명"] || "";
+        document.getElementById("r-buyer").textContent = o["담당자명"] || "";
+        document.getElementById("r-phone").textContent = o["연락처"] || "";
+        document.getElementById("r-address").textContent = o["배송주소"] || "";
+        document.getElementById("r-item").textContent = o["상품명"] || "";
+        document.getElementById("r-unitPrice").textContent = fmt(o["단가"]);
+        document.getElementById("r-qty").textContent = `${o["수량"]}개`;
+        document.getElementById("r-itemAmount").textContent = fmt(o["상품금액"]);
+        document.getElementById("r-shipping").textContent = fmt(o["배송비"]);
+        document.getElementById("r-total").textContent = fmt(o["총결제금액"]);
+
+        document.getElementById("resultBox").style.display = "block";
+      } catch (e) {
+        errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+      }
+    });
+  </script>
+</body>
+</html>

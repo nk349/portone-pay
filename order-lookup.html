@@ -39,8 +39,7 @@
   <div class="card">
     <div class="no-print">
     <h2>주문 조회 / 영수증 출력</h2>
-    <p class="muted">결제 시 받은 발주번호와 연락처를 입력해주세요.</p>
-
+    <p class="muted">결제 시 받은 담당자명과 연락처를 입력해주세요.</p>
       <label>담당자명</label>
       <input id="buyerName" type="text" placeholder="예: 홍길동" />
       <label>연락처</label>
@@ -70,7 +69,10 @@
       <div class="total-row"><span>총 결제금액</span><span id="r-total"></span></div>
 
       <p style="font-size:12px; color:#888; margin-top:12px; text-align:center;">※ 카드 승인 상세 내역(승인번호, 카드사 등)은 카드사 문자 또는 앱에서 확인해주세요.</p>
-      <button class="btn btn-print no-print" id="printBtn" type="button">영수증 인쇄 (PDF 저장 가능)</button>
+      <a id="printLink" class="no-print" href="javascript:void(0)" target="_blank"
+         style="display:block; width:100%; padding:12px; background:#166534; color:#fff; border-radius:10px; font-size:15px; text-align:center; text-decoration:none; margin-top:8px; box-sizing:border-box;">
+        영수증 인쇄 / PDF 저장
+      </a>
     </div>
   </div>
 
@@ -80,6 +82,16 @@
 
     function fmt(n) {
       return Number(n || 0).toLocaleString("ko-KR") + "원";
+    }
+
+    // URL 파라미터로 자동 조회 및 인쇄
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("print") === "1" && urlParams.get("buyerName") && urlParams.get("phone")) {
+      document.getElementById("buyerName").value = urlParams.get("buyerName");
+      document.getElementById("phone").value = urlParams.get("phone");
+      document.getElementById("searchBtn").click();
+      // 조회 완료 후 자동 인쇄
+      setTimeout(function() { window.print(); }, 3000);
     }
 
     document.getElementById("searchBtn").addEventListener("click", async () => {
@@ -127,13 +139,13 @@
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
     });
-  document.getElementById("printBtn").addEventListener("click", function() {
-      // iframe 안에서 실행 중이면 새 탭으로 열어서 인쇄
-      if (window.self !== window.top) {
-        window.open(window.location.href, "_blank");
-      } else {
-        setTimeout(function() { window.print(); }, 100);
-      }
+  document.getElementById("printLink").addEventListener("click", function() {
+      const url = "https://nk349.github.io/portone-pay/order-lookup.html?" + new URLSearchParams({
+        buyerName: document.getElementById("buyerName").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        print: "1"
+      }).toString();
+      window.open(url, "_blank");
     });
   </script>
 </body>

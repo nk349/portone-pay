@@ -38,8 +38,8 @@
 <body>
   <div class="card">
     <div class="no-print">
-    <h2>주문 조회 / 영수증 출력</h2>
-    <p class="muted">결제 시 받은 담당자명과 연락처를 입력해주세요.</p>
+      <h2>주문 조회 / 영수증 출력</h2>
+      <p class="muted">결제 시 받은 담당자명과 연락처를 입력해주세요.</p>
       <label>담당자명</label>
       <input id="buyerName" type="text" placeholder="예: 홍길동" />
       <label>연락처</label>
@@ -69,23 +69,20 @@
       <div class="total-row"><span>총 결제금액</span><span id="r-total"></span></div>
 
       <p style="font-size:12px; color:#888; margin-top:12px; text-align:center;">※ 카드 승인 상세 내역(승인번호, 카드사 등)은 카드사 문자 또는 앱에서 확인해주세요.</p>
-      <p style="font-size:12px; color:#888; margin-top:12px; text-align:center;">※ 카드 승인 상세 내역(승인번호, 카드사 등)은 카드사 문자 또는 앱에서 확인해주세요.</p>
       <button id="printBtn" class="no-print" type="button"
-         style="display:block; width:100%; padding:12px; background:#166534; color:#fff; border-radius:10px; font-size:15px; text-align:center; border:none; cursor:pointer; margin-top:8px; box-sizing:border-box;">
+        style="display:block; width:100%; padding:12px; background:#166534; color:#fff; border-radius:10px; font-size:15px; text-align:center; border:none; cursor:pointer; margin-top:8px; box-sizing:border-box;">
         영수증 인쇄 / PDF 저장
       </button>
     </div>
   </div>
 
   <script>
-    // Apps Script 배포 후 URL로 교체하세요
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNNN9dRd3EATcAZV6uXx90TtTo4ryIPv-yI1BuXAFGAPfT-OnJR_dsBrc_LcoaeztPlw/exec";
 
     function fmt(n) {
       return Number(n || 0).toLocaleString("ko-KR") + "원";
     }
 
-    // URL 파라미터로 자동 조회 및 인쇄
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("print") === "1" && urlParams.get("buyerName") && urlParams.get("phone")) {
       document.getElementById("buyerName").value = urlParams.get("buyerName");
@@ -140,12 +137,9 @@
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
     });
-  document.getElementById("printBtn").addEventListener("click", function() {
-      try {
-        window.top.print();
-      } catch(e) {
-        window.print();
-      }
+
+    document.getElementById("printBtn").addEventListener("click", function() {
+      window.print();
     });
   </script>
 </body>

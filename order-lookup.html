@@ -70,10 +70,10 @@
 
       <p style="font-size:12px; color:#888; margin-top:12px; text-align:center;">※ 카드 승인 상세 내역(승인번호, 카드사 등)은 카드사 문자 또는 앱에서 확인해주세요.</p>
       <p style="font-size:12px; color:#888; margin-top:12px; text-align:center;">※ 카드 승인 상세 내역(승인번호, 카드사 등)은 카드사 문자 또는 앱에서 확인해주세요.</p>
-      <a id="printLink" class="no-print" href="javascript:void(0)" target="_blank"
-         style="display:block; width:100%; padding:12px; background:#166534; color:#fff; border-radius:10px; font-size:15px; text-align:center; text-decoration:none; margin-top:8px; box-sizing:border-box;">
+      <button id="printBtn" class="no-print" type="button"
+         style="display:block; width:100%; padding:12px; background:#166534; color:#fff; border-radius:10px; font-size:15px; text-align:center; border:none; cursor:pointer; margin-top:8px; box-sizing:border-box;">
         영수증 인쇄 / PDF 저장
-      </a>
+      </button>
     </div>
   </div>
 
@@ -140,13 +140,12 @@
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
     });
-  document.getElementById("printLink").addEventListener("click", function() {
-      const url = "https://nk349.github.io/portone-pay/order-lookup.html?" + new URLSearchParams({
-        buyerName: document.getElementById("buyerName").value.trim(),
-        phone: document.getElementById("phone").value.trim(),
-        print: "1"
-      }).toString();
-      window.open(url, "_blank");
+  document.getElementById("printBtn").addEventListener("click", function() {
+      try {
+        window.top.print();
+      } catch(e) {
+        window.print();
+      }
     });
   </script>
 </body>

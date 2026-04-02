@@ -35,19 +35,19 @@
 </head>
 <body>
   <div class="card">
-    <!-- 1단계: 주문 조회 -->
-    <h2>취소 / 반품 신청</h2>
-    <p class="muted">결제 시 입력하신 담당자명과 연락처로 주문을 조회한 뒤 신청해주세요.</p>
+    <div id="searchArea">
+      <h2>취소 / 반품 신청</h2>
+      <p class="muted">결제 시 입력하신 담당자명과 연락처로 주문을 조회한 뒤 신청해주세요.</p>
 
-    <label>담당자명</label>
-    <input id="buyerName" type="text" placeholder="예: 홍길동" />
-    <label>연락처</label>
-    <input id="phone" type="tel" placeholder="예: 01012345678" />
-    <button class="btn btn-search" id="searchBtn">주문 조회</button>
-    <p id="errMsg" class="err"></p>
-    <p id="loadingMsg">조회 중입니다. 잠시만 기다려주세요...</p>
+      <label>담당자명</label>
+      <input id="buyerName" type="text" placeholder="예: 홍길동" />
+      <label>연락처</label>
+      <input id="phone" type="tel" placeholder="예: 01012345678" />
+      <button class="btn btn-search" id="searchBtn">주문 조회</button>
+      <p id="errMsg" class="err"></p>
+      <p id="loadingMsg">조회 중입니다. 잠시만 기다려주세요...</p>
+    </div>
 
-    <!-- 2단계: 조회된 주문 확인 -->
     <div id="orderBox">
       <div class="hr"></div>
       <p class="order-title">조회된 주문 정보</p>
@@ -59,7 +59,6 @@
       <div class="info-row"><span class="label">총결제금액</span><span class="value" id="o-total"></span></div>
     </div>
 
-    <!-- 3단계: 취소 사유 입력 -->
     <div id="cancelForm">
       <div class="hr"></div>
       <div class="notice">취소/반품 신청 후 1~2 영업일 내에 처리됩니다. 배송이 이미 출발한 경우 처리가 지연될 수 있습니다.</div>
@@ -80,7 +79,6 @@
       <p id="submitLoadingMsg">신청 중입니다. 잠시만 기다려주세요...</p>
     </div>
 
-    <!-- 4단계: 완료 -->
     <div id="doneBox">
       <div class="hr"></div>
       <div class="done-icon">✅</div>
@@ -94,7 +92,15 @@
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = "여기에_앱스스크립트_URL_입력";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNNN9dRd3EATcAZV6uXx90TtTo4ryIPv-yI1BuXAFGAPfT-OnJR_dsBrc_LcoaeztPlw/exec";
+
+    // 상품명으로 productKey 추출
+    function getProductKey(itemName) {
+      if (!itemName) return "";
+      if (itemName.includes("혼천의")) return "honcheonui";
+      if (itemName.includes("수경재배")) return "hydroponics";
+      return "";
+    }
 
     let orderData = null;
 
@@ -102,7 +108,6 @@
       return Number(n || 0).toLocaleString("ko-KR") + "원";
     }
 
-    // 1단계: 주문 조회
     document.getElementById("searchBtn").addEventListener("click", async () => {
       const buyerName = document.getElementById("buyerName").value.trim();
       const phone = document.getElementById("phone").value.trim();
@@ -145,7 +150,6 @@
       }
     });
 
-    // 2단계: 취소 신청 제출
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const cancelReason = document.getElementById("cancelReason").value;
       const cancelDetail = document.getElementById("cancelDetail").value.trim();
@@ -167,10 +171,12 @@
         type: "cancel",
         refNo: orderData["발주번호"] || "",
         paymentId: orderData["결제ID"] || "",
+        productKey: getProductKey(orderData["상품명"]),
         company: orderData["업체명"] || "",
         buyerName: orderData["담당자명"] || "",
         phone: orderData["연락처"] || "",
         itemName: orderData["상품명"] || "",
+        qty: orderData["수량"] || 0,
         totalAmount: orderData["총결제금액"] || 0,
         cancelReason: cancelDetail ? `${cancelReason} - ${cancelDetail}` : cancelReason,
       };
@@ -182,17 +188,10 @@
         });
 
         submitLoadingMsg.style.display = "none";
+        document.getElementById("searchArea").style.display = "none";
         document.getElementById("orderBox").style.display = "none";
         document.getElementById("cancelForm").style.display = "none";
         document.getElementById("doneBox").style.display = "block";
-        // 조회 폼도 숨기기
-        document.getElementById("searchBtn").closest("div") || null;
-        document.querySelector("h2").style.display = "none";
-        document.querySelector(".muted").style.display = "none";
-        document.getElementById("buyerName").style.display = "none";
-        document.getElementById("phone").style.display = "none";
-        document.getElementById("searchBtn").style.display = "none";
-        document.querySelectorAll("label").forEach(el => el.style.display = "none");
       } catch (e) {
         submitLoadingMsg.style.display = "none";
         submitBtn.disabled = false;

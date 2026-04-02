@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>취소/반품 신청 - 켬 스튜디오</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; line-height: 1.6; background: #f9fafb; }
+    .card { max-width: 560px; margin: 0 auto; border: 1px solid #ddd; border-radius: 12px; padding: 24px; background: #fff; }
+    h2 { margin: 0 0 6px; }
+    .muted { color: #666; font-size: 13px; margin: 0 0 20px; }
+    label { display: block; font-size: 12px; color: #444; margin: 0 0 6px; }
+    input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; font-family: inherit; }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn { width: 100%; padding: 13px; font-size: 15px; border: 0; border-radius: 10px; cursor: pointer; }
+    .btn-search { background: #1d4ed8; color: #fff; }
+    .btn-cancel { background: #991b1b; color: #fff; margin-top: 4px; }
+    .btn-cancel:disabled { background: #ccc; cursor: not-allowed; }
+    .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
+    .hr { height: 1px; background: #eee; margin: 20px 0; }
+    .info-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .info-row .label { color: #666; }
+    .info-row .value { font-weight: 500; text-align: right; }
+    .order-title { font-size: 15px; font-weight: 700; margin: 0 0 12px; }
+    #orderBox { display: none; margin-top: 20px; }
+    #cancelForm { display: none; margin-top: 20px; }
+    #doneBox { display: none; margin-top: 20px; text-align: center; padding: 24px 0; }
+    .done-icon { font-size: 48px; margin-bottom: 12px; }
+    .done-title { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+    .done-desc { font-size: 13px; color: #666; line-height: 1.8; }
+    #loadingMsg { color: #666; font-size: 13px; margin-top: 10px; display: none; }
+    #submitLoadingMsg { color: #666; font-size: 13px; margin-top: 10px; display: none; }
+    .notice { background: #fef9c3; border: 1px solid #fde047; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #713f12; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- 1단계: 주문 조회 -->
+    <h2>취소 / 반품 신청</h2>
+    <p class="muted">결제 시 입력하신 담당자명과 연락처로 주문을 조회한 뒤 신청해주세요.</p>
+
+    <label>담당자명</label>
+    <input id="buyerName" type="text" placeholder="예: 홍길동" />
+    <label>연락처</label>
+    <input id="phone" type="tel" placeholder="예: 01012345678" />
+    <button class="btn btn-search" id="searchBtn">주문 조회</button>
+    <p id="errMsg" class="err"></p>
+    <p id="loadingMsg">조회 중입니다. 잠시만 기다려주세요...</p>
+
+    <!-- 2단계: 조회된 주문 확인 -->
+    <div id="orderBox">
+      <div class="hr"></div>
+      <p class="order-title">조회된 주문 정보</p>
+      <div class="info-row"><span class="label">발주번호</span><span class="value" id="o-refNo"></span></div>
+      <div class="info-row"><span class="label">업체명</span><span class="value" id="o-company"></span></div>
+      <div class="info-row"><span class="label">담당자</span><span class="value" id="o-buyer"></span></div>
+      <div class="info-row"><span class="label">상품명</span><span class="value" id="o-item"></span></div>
+      <div class="info-row"><span class="label">수량</span><span class="value" id="o-qty"></span></div>
+      <div class="info-row"><span class="label">총결제금액</span><span class="value" id="o-total"></span></div>
+    </div>
+
+    <!-- 3단계: 취소 사유 입력 -->
+    <div id="cancelForm">
+      <div class="hr"></div>
+      <div class="notice">취소/반품 신청 후 1~2 영업일 내에 처리됩니다. 배송이 이미 출발한 경우 처리가 지연될 수 있습니다.</div>
+      <label>취소 사유</label>
+      <select id="cancelReason">
+        <option value="">사유를 선택해주세요</option>
+        <option value="단순 변심">단순 변심</option>
+        <option value="수량 오입력">수량 오입력</option>
+        <option value="배송 지연">배송 지연</option>
+        <option value="상품 불량/파손">상품 불량/파손</option>
+        <option value="상품 오배송">상품 오배송</option>
+        <option value="기타">기타</option>
+      </select>
+      <label>상세 내용 <span style="color:#999">(선택)</span></label>
+      <textarea id="cancelDetail" placeholder="추가로 전달할 내용이 있으면 입력해주세요."></textarea>
+      <button class="btn btn-cancel" id="submitBtn">취소 신청하기</button>
+      <p id="cancelErrMsg" class="err"></p>
+      <p id="submitLoadingMsg">신청 중입니다. 잠시만 기다려주세요...</p>
+    </div>
+
+    <!-- 4단계: 완료 -->
+    <div id="doneBox">
+      <div class="hr"></div>
+      <div class="done-icon">✅</div>
+      <p class="done-title">취소 신청이 접수되었습니다</p>
+      <p class="done-desc">
+        1~2 영업일 내에 검토 후 처리해드립니다.<br>
+        환불은 카드사 기준으로 3~5 영업일 소요될 수 있습니다.<br>
+        문의사항은 nk@kyeomstudio.com으로 연락해주세요.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const APPS_SCRIPT_URL = "여기에_앱스스크립트_URL_입력";
+
+    let orderData = null;
+
+    function fmt(n) {
+      return Number(n || 0).toLocaleString("ko-KR") + "원";
+    }
+
+    // 1단계: 주문 조회
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+      const buyerName = document.getElementById("buyerName").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const errMsg = document.getElementById("errMsg");
+      const loadingMsg = document.getElementById("loadingMsg");
+
+      errMsg.textContent = "";
+      document.getElementById("orderBox").style.display = "none";
+      document.getElementById("cancelForm").style.display = "none";
+
+      if (!buyerName || !phone) {
+        errMsg.textContent = "담당자명과 연락처를 모두 입력해주세요.";
+        return;
+      }
+
+      loadingMsg.style.display = "block";
+      try {
+        const res = await fetch(`${APPS_SCRIPT_URL}?buyerName=${encodeURIComponent(buyerName)}&phone=${encodeURIComponent(phone)}`);
+        const data = await res.json();
+        loadingMsg.style.display = "none";
+
+        if (!data.ok) {
+          errMsg.textContent = data.error || "주문 정보를 찾을 수 없습니다.";
+          return;
+        }
+
+        orderData = data.order;
+        document.getElementById("o-refNo").textContent = orderData["발주번호"] || "";
+        document.getElementById("o-company").textContent = orderData["업체명"] || "";
+        document.getElementById("o-buyer").textContent = orderData["담당자명"] || "";
+        document.getElementById("o-item").textContent = orderData["상품명"] || "";
+        document.getElementById("o-qty").textContent = `${orderData["수량"]}개`;
+        document.getElementById("o-total").textContent = fmt(orderData["총결제금액"]);
+
+        document.getElementById("orderBox").style.display = "block";
+        document.getElementById("cancelForm").style.display = "block";
+      } catch (e) {
+        loadingMsg.style.display = "none";
+        errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+      }
+    });
+
+    // 2단계: 취소 신청 제출
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const cancelReason = document.getElementById("cancelReason").value;
+      const cancelDetail = document.getElementById("cancelDetail").value.trim();
+      const cancelErrMsg = document.getElementById("cancelErrMsg");
+      const submitLoadingMsg = document.getElementById("submitLoadingMsg");
+      const submitBtn = document.getElementById("submitBtn");
+
+      cancelErrMsg.textContent = "";
+
+      if (!cancelReason) {
+        cancelErrMsg.textContent = "취소 사유를 선택해주세요.";
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitLoadingMsg.style.display = "block";
+
+      const payload = {
+        type: "cancel",
+        refNo: orderData["발주번호"] || "",
+        paymentId: orderData["결제ID"] || "",
+        company: orderData["업체명"] || "",
+        buyerName: orderData["담당자명"] || "",
+        phone: orderData["연락처"] || "",
+        itemName: orderData["상품명"] || "",
+        totalAmount: orderData["총결제금액"] || 0,
+        cancelReason: cancelDetail ? `${cancelReason} - ${cancelDetail}` : cancelReason,
+      };
+
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+
+        submitLoadingMsg.style.display = "none";
+        document.getElementById("orderBox").style.display = "none";
+        document.getElementById("cancelForm").style.display = "none";
+        document.getElementById("doneBox").style.display = "block";
+        // 조회 폼도 숨기기
+        document.getElementById("searchBtn").closest("div") || null;
+        document.querySelector("h2").style.display = "none";
+        document.querySelector(".muted").style.display = "none";
+        document.getElementById("buyerName").style.display = "none";
+        document.getElementById("phone").style.display = "none";
+        document.getElementById("searchBtn").style.display = "none";
+        document.querySelectorAll("label").forEach(el => el.style.display = "none");
+      } catch (e) {
+        submitLoadingMsg.style.display = "none";
+        submitBtn.disabled = false;
+        cancelErrMsg.textContent = "신청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+      }
+    });
+  </script>
+</body>
+</html>

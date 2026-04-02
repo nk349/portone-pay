@@ -116,6 +116,13 @@
       </div>
     </div>
 
+    <div class="row">
+      <div class="col" style="display:flex; align-items:center; gap:8px; padding-top:4px;">
+        <input id="isRemote" type="checkbox" style="width:auto; margin:0;" />
+        <label for="isRemote" style="margin:0; font-size:13px; color:#444; cursor:pointer;">제주 및 도서산간 지역 (배송비 7,000원)</label>
+      </div>
+    </div>
+
     <div class="hr"></div>
 
     <div class="row">
@@ -228,14 +235,14 @@
     }
 
 
-    function getShippingFee(qty) {
+    function getShippingFee(qty, isRemote) {
       if (qty <= 0) return 0;
-      return 5000;
+      return isRemote ? 7000 : 5000;
     }
 
-    function getShippingNotice(qty) {
+    function getShippingNotice(qty, isRemote) {
       if (qty <= 0) return "";
-      return "배송비 5,000원 / 제주 및 도서산간 지역 7,000원";
+      return isRemote ? "배송비 7,000원 (제주 및 도서산간 지역)" : "배송비 5,000원 / 제주 및 도서산간 지역은 7,000원";
     }
 
     function calcItemAmount_(unitPrice, qty) {
@@ -269,9 +276,10 @@
       const itemAmount = calcItemAmount_(unitPrice, qty);
       document.getElementById("itemAmount").value = itemAmount;
 
-      const shippingFee = getShippingFee(qty);
+      const isRemote = document.getElementById("isRemote").checked;
+      const shippingFee = getShippingFee(qty, isRemote);
       document.getElementById("shippingFee").value = shippingFee;
-      document.getElementById("shippingNotice").textContent = getShippingNotice(qty);
+      document.getElementById("shippingNotice").textContent = getShippingNotice(qty, isRemote);
 
       const total = itemAmount + shippingFee;
       document.getElementById("totalAmount").value = total;
@@ -326,8 +334,9 @@
 
       const unitPrice = toInt_(document.getElementById("unitPrice").value, 0);
       const qty = toInt_(document.getElementById("qty").value, 0);
+      const isRemote = document.getElementById("isRemote").checked;
       const itemAmount = calcItemAmount_(unitPrice, qty);
-      const shippingFee = getShippingFee(qty);
+      const shippingFee = getShippingFee(qty, isRemote);
       const totalAmount = itemAmount + shippingFee;
       const orderName = document.getElementById("orderName").value || "주문";
 
@@ -419,6 +428,7 @@
       ["company", "itemName", "qty"].forEach((id) => {
         document.getElementById(id).addEventListener("input", syncDerivedFields_);
       });
+      document.getElementById("isRemote").addEventListener("change", syncDerivedFields_);
 
       document.getElementById("modalCloseBtn").addEventListener("click", () => {
         document.getElementById("successModal").classList.remove("show");

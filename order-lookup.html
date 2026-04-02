@@ -68,7 +68,7 @@
       <div class="info-row"><span class="label">배송비</span><span class="value" id="r-shipping"></span></div>
       <div class="total-row"><span>총 결제금액</span><span id="r-total"></span></div>
 
-      <button class="btn btn-print no-print" onclick="window.print()">영수증 인쇄</button>
+      <button class="btn btn-print no-print" id="printBtn">영수증 인쇄</button>
     </div>
   </div>
 
@@ -119,6 +119,9 @@
       } catch (e) {
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
+    });
+  document.getElementById("printBtn").addEventListener("click", function() {
+      window.print();
     });
   </script>
 </body>

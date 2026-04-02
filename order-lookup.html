@@ -89,9 +89,8 @@
     if (urlParams.get("print") === "1" && urlParams.get("buyerName") && urlParams.get("phone")) {
       document.getElementById("buyerName").value = urlParams.get("buyerName");
       document.getElementById("phone").value = urlParams.get("phone");
+      window._autoPrint = true;
       document.getElementById("searchBtn").click();
-      // 조회 완료 후 자동 인쇄
-      setTimeout(function() { window.print(); }, 3000);
     }
 
     document.getElementById("searchBtn").addEventListener("click", async () => {
@@ -134,6 +133,7 @@
         document.getElementById("r-total").textContent = fmt(o["총결제금액"]);
 
         document.getElementById("resultBox").style.display = "block";
+        if (window._autoPrint) { window._autoPrint = false; setTimeout(function(){ window.print(); }, 300); }
       } catch (e) {
         loadingMsg.style.display = "none";
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";

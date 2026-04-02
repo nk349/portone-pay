@@ -22,6 +22,7 @@
     .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
     .hr { height: 1px; background: #eee; margin: 14px 0; }
     .price-notice { color: #1d4ed8; font-size: 13px; margin: 4px 0 0 0; }
+    .shipping-notice { color: #666; font-size: 12px; margin: 4px 0 0 0; }
 
     /* 결제 완료 팝업 */
     .modal-overlay {
@@ -129,9 +130,22 @@
     </div>
     <p class="price-notice">30개 이상 주문 시 교육기관 단체 가격(13,900원)이 자동 적용됩니다.</p>
 
+
     <div class="row">
       <div class="col">
-        <label>총액 (원)</label>
+        <label>배송비 (원)</label>
+        <input id="shippingFee" type="number" readonly />
+      </div>
+      <div class="col">
+        <label>상품 금액 (원)</label>
+        <input id="itemAmount" type="number" readonly />
+      </div>
+    </div>
+    <p class="shipping-notice" id="shippingNotice"></p>
+
+    <div class="row">
+      <div class="col">
+        <label>총액 (배송비 포함, 원)</label>
         <input id="totalAmount" type="number" readonly />
       </div>
       <div class="col">
@@ -213,6 +227,28 @@
       return qty >= 30 ? 13900 : 16900;
     }
 
+
+    function getShippingFee(qty) {
+      if (qty <= 0) return 0;
+      if (qty < 20) return 3000;
+      if (qty < 30) return 4000;
+      return Math.ceil(qty / 30) * 5000;
+    }
+
+    function getShippingNotice(qty) {
+      if (qty <= 0) return "";
+      if (qty < 20) return "배송비 3,000원 (1~19개 기준)";
+      if (qty < 30) return "배송비 4,000원 (20~29개 기준)";
+      const boxes = Math.ceil(qty / 30);
+      return `배송비 ${(boxes * 5000).toLocaleString("ko-KR")}원 (30개 단위 박스 ${boxes}개 기준)`;
+    }
+
+    function calcItemAmount_(unitPrice, qty) {
+      unitPrice = toInt_(unitPrice, 0);
+      qty = toInt_(qty, 0);
+      if (unitPrice < 0 || qty <= 0) return 0;
+      return unitPrice * qty;
+    }
     function calcTotal_(unitPrice, qty) {
       unitPrice = toInt_(unitPrice, 0);
       qty = toInt_(qty, 0);
@@ -235,7 +271,14 @@
       const unitPrice = getUnitPriceByQty(qty);
       document.getElementById("unitPrice").value = unitPrice;
 
-      const total = calcTotal_(unitPrice, qty);
+      const itemAmount = calcItemAmount_(unitPrice, qty);
+      document.getElementById("itemAmount").value = itemAmount;
+
+      const shippingFee = getShippingFee(qty);
+      document.getElementById("shippingFee").value = shippingFee;
+      document.getElementById("shippingNotice").textContent = getShippingNotice(qty);
+
+      const total = itemAmount + shippingFee;
       document.getElementById("totalAmount").value = total;
 
       const parts = [];
@@ -288,7 +331,9 @@
 
       const unitPrice = toInt_(document.getElementById("unitPrice").value, 0);
       const qty = toInt_(document.getElementById("qty").value, 0);
-      const totalAmount = calcTotal_(unitPrice, qty);
+      const itemAmount = calcItemAmount_(unitPrice, qty);
+      const shippingFee = getShippingFee(qty);
+      const totalAmount = itemAmount + shippingFee;
       const orderName = document.getElementById("orderName").value || "주문";
 
       if (!company) { setResult_("업체명을 입력해주세요.", "err"); return; }

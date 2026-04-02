@@ -230,17 +230,12 @@
 
     function getShippingFee(qty) {
       if (qty <= 0) return 0;
-      if (qty < 20) return 3000;
-      if (qty < 30) return 4000;
-      return Math.ceil(qty / 30) * 5000;
+      return 5000;
     }
 
     function getShippingNotice(qty) {
       if (qty <= 0) return "";
-      if (qty < 20) return "배송비 3,000원 (1~19개 기준)";
-      if (qty < 30) return "배송비 4,000원 (20~29개 기준)";
-      const boxes = Math.ceil(qty / 30);
-      return `배송비 ${(boxes * 5000).toLocaleString("ko-KR")}원 (30개 단위 박스 ${boxes}개 기준)`;
+      return "배송비 5,000원 / 제주 및 도서산간 지역 7,000원";
     }
 
     function calcItemAmount_(unitPrice, qty) {

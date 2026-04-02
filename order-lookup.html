@@ -47,6 +47,7 @@
       <input id="phone" type="tel" placeholder="예: 01012345678" />
       <button class="btn btn-search" id="searchBtn">주문 조회</button>
       <p id="errMsg" class="err"></p>
+      <p id="loadingMsg" style="color:#666; font-size:13px; margin-top:10px; display:none;">조회 중입니다. 최대 20초 정도 소요될 수 있습니다. 잠시만 기다려주세요...</p>
     </div>
 
     <div id="resultBox">
@@ -68,7 +69,7 @@
       <div class="info-row"><span class="label">배송비</span><span class="value" id="r-shipping"></span></div>
       <div class="total-row"><span>총 결제금액</span><span id="r-total"></span></div>
 
-      <button class="btn btn-print no-print" id="printBtn">영수증 인쇄</button>
+      <button class="btn btn-print no-print" id="printBtn" type="button">영수증 인쇄 (PDF 저장 가능)</button>
     </div>
   </div>
 
@@ -84,16 +85,20 @@
       const buyerName = document.getElementById("buyerName").value.trim();
       const phone = document.getElementById("phone").value.trim();
       const errMsg = document.getElementById("errMsg");
+      const loadingMsg = document.getElementById("loadingMsg");
       errMsg.textContent = "";
+      loadingMsg.style.display = "none";
 
       if (!buyerName || !phone) {
         errMsg.textContent = "담당자명과 연락처를 모두 입력해주세요.";
         return;
       }
 
+      loadingMsg.style.display = "block";
       try {
         const res = await fetch(`${APPS_SCRIPT_URL}?buyerName=${encodeURIComponent(buyerName)}&phone=${encodeURIComponent(phone)}`);
         const data = await res.json();
+        loadingMsg.style.display = "none";
 
         if (!data.ok) {
           errMsg.textContent = data.error || "주문 정보를 찾을 수 없습니다.";
@@ -117,11 +122,12 @@
 
         document.getElementById("resultBox").style.display = "block";
       } catch (e) {
+        loadingMsg.style.display = "none";
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
     });
   document.getElementById("printBtn").addEventListener("click", function() {
-      window.print();
+      setTimeout(function() { window.print(); }, 100);
     });
   </script>
 </body>

@@ -41,8 +41,8 @@
     <p class="muted">결제 시 받은 발주번호와 연락처를 입력해주세요.</p>
 
     <div class="no-print">
-      <label>발주번호</label>
-      <input id="refNo" type="text" placeholder="예: ORD-20260310-1432" />
+      <label>담당자명</label>
+      <input id="buyerName" type="text" placeholder="예: 홍길동" />
       <label>연락처</label>
       <input id="phone" type="tel" placeholder="예: 01012345678" />
       <button class="btn btn-search" id="searchBtn">주문 조회</button>
@@ -81,18 +81,18 @@
     }
 
     document.getElementById("searchBtn").addEventListener("click", async () => {
-      const refNo = document.getElementById("refNo").value.trim();
+      const buyerName = document.getElementById("buyerName").value.trim();
       const phone = document.getElementById("phone").value.trim();
       const errMsg = document.getElementById("errMsg");
       errMsg.textContent = "";
 
-      if (!refNo || !phone) {
-        errMsg.textContent = "발주번호와 연락처를 모두 입력해주세요.";
+      if (!buyerName || !phone) {
+        errMsg.textContent = "담당자명과 연락처를 모두 입력해주세요.";
         return;
       }
 
       try {
-        const res = await fetch(`${APPS_SCRIPT_URL}?refNo=${encodeURIComponent(refNo)}&phone=${encodeURIComponent(phone)}`);
+        const res = await fetch(`${APPS_SCRIPT_URL}?buyerName=${encodeURIComponent(buyerName)}&phone=${encodeURIComponent(phone)}`);
         const data = await res.json();
 
         if (!data.ok) {

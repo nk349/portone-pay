@@ -13,20 +13,24 @@
     input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; }
     .btn { width: 100%; padding: 13px; font-size: 15px; border: 0; border-radius: 10px; cursor: pointer; }
     .btn-search { background: #1d4ed8; color: #fff; }
-    .btn-print { background: #166534; color: #fff; margin-top: 16px; }
+    .btn-select { background: #1d4ed8; color: #fff; margin-top: 4px; }
     .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
     .hr { height: 1px; background: #eee; margin: 20px 0; }
-
-    /* 주문 결과 */
-    #resultBox { display: none; margin-top: 20px; }
-    .receipt-title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
-    .receipt-sub { font-size: 12px; color: #888; margin: 0 0 16px; }
     .info-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
     .info-row .label { color: #666; }
     .info-row .value { font-weight: 500; text-align: right; }
     .total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; padding: 12px 0 0; color: #166534; }
+    .receipt-title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+    .receipt-sub { font-size: 12px; color: #888; margin: 0 0 16px; }
+    .order-list-item { border: 1.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; font-size: 14px; transition: border-color 0.15s; }
+    .order-list-item:hover { border-color: #1d4ed8; }
+    .order-list-item.selected { border-color: #1d4ed8; background: #eff6ff; }
+    .order-list-item .item-name { font-weight: 600; margin-bottom: 4px; }
+    .order-list-item .item-meta { color: #666; font-size: 12px; }
+    #loadingMsg { color: #666; font-size: 13px; margin-top: 10px; display: none; }
+    #orderListBox { display: none; margin-top: 20px; }
+    #resultBox { display: none; margin-top: 20px; }
 
-    /* 인쇄 스타일 */
     @media print {
       body { padding: 0; }
       .card { border: none; padding: 0; max-width: 100%; }
@@ -46,14 +50,23 @@
       <input id="phone" type="tel" placeholder="예: 01012345678" />
       <button class="btn btn-search" id="searchBtn">주문 조회</button>
       <p id="errMsg" class="err"></p>
-      <p id="loadingMsg" style="color:#666; font-size:13px; margin-top:10px; display:none;">조회 중입니다. 최대 20초 정도 소요될 수 있습니다. 잠시만 기다려주세요...</p>
+      <p id="loadingMsg">조회 중입니다. 최대 20초 정도 소요될 수 있습니다. 잠시만 기다려주세요...</p>
     </div>
 
+    <!-- 여러 건일 때 목록 선택 -->
+    <div id="orderListBox" class="no-print">
+      <div class="hr"></div>
+      <p style="font-size:15px; font-weight:700; margin:0 0 12px;">조회된 주문을 선택해주세요</p>
+      <div id="orderList"></div>
+      <button class="btn btn-select" id="selectBtn">선택한 주문 영수증 보기</button>
+      <p id="selectErrMsg" class="err"></p>
+    </div>
+
+    <!-- 영수증 -->
     <div id="resultBox">
       <div class="hr no-print"></div>
       <p class="receipt-title">켬 스튜디오 주문 영수증</p>
       <p class="receipt-sub" id="receiptDate"></p>
-
       <div class="info-row"><span class="label">발주번호</span><span class="value" id="r-refNo"></span></div>
       <div class="info-row"><span class="label">결제번호</span><span class="value" id="r-paymentId"></span></div>
       <div class="info-row"><span class="label">업체명</span><span class="value" id="r-company"></span></div>
@@ -67,11 +80,14 @@
       <div class="info-row"><span class="label">상품금액</span><span class="value" id="r-itemAmount"></span></div>
       <div class="info-row"><span class="label">배송비</span><span class="value" id="r-shipping"></span></div>
       <div class="total-row"><span>총 결제금액</span><span id="r-total"></span></div>
-
       <p style="font-size:12px; color:#888; margin-top:12px; text-align:center;">※ 카드 승인 상세 내역(승인번호, 카드사 등)은 카드사 문자 또는 앱에서 확인해주세요.</p>
       <button id="printBtn" class="no-print" type="button"
         style="display:block; width:100%; padding:12px; background:#166534; color:#fff; border-radius:10px; font-size:15px; text-align:center; border:none; cursor:pointer; margin-top:8px; box-sizing:border-box;">
         영수증 인쇄 / PDF 저장
+      </button>
+      <button id="backBtn" class="no-print" type="button"
+        style="display:block; width:100%; padding:10px; background:#fff; color:#1d4ed8; border:1.5px solid #1d4ed8; border-radius:10px; font-size:14px; cursor:pointer; margin-top:8px; box-sizing:border-box;">
+        다른 주문 보기
       </button>
     </div>
   </div>
@@ -79,16 +95,28 @@
   <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNNN9dRd3EATcAZV6uXx90TtTo4ryIPv-yI1BuXAFGAPfT-OnJR_dsBrc_LcoaeztPlw/exec";
 
+    let allOrders = null;
+    let selectedOrder = null;
+
     function fmt(n) {
       return Number(n || 0).toLocaleString("ko-KR") + "원";
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("print") === "1" && urlParams.get("buyerName") && urlParams.get("phone")) {
-      document.getElementById("buyerName").value = urlParams.get("buyerName");
-      document.getElementById("phone").value = urlParams.get("phone");
-      window._autoPrint = true;
-      document.getElementById("searchBtn").click();
+    function fillReceipt(o) {
+      document.getElementById("receiptDate").textContent = `결제일시: ${o["저장시각"] || ""}`;
+      document.getElementById("r-refNo").textContent = o["발주번호"] || "";
+      document.getElementById("r-paymentId").textContent = o["결제ID"] || "";
+      document.getElementById("r-company").textContent = o["업체명"] || "";
+      document.getElementById("r-buyer").textContent = o["담당자명"] || "";
+      document.getElementById("r-phone").textContent = o["연락처"] || "";
+      document.getElementById("r-address").textContent = o["배송주소"] || "";
+      document.getElementById("r-item").textContent = o["상품명"] || "";
+      document.getElementById("r-unitPrice").textContent = fmt(o["단가"]);
+      document.getElementById("r-qty").textContent = `${o["수량"]}개`;
+      document.getElementById("r-itemAmount").textContent = fmt(o["상품금액"]);
+      document.getElementById("r-shipping").textContent = fmt(o["배송비"]);
+      document.getElementById("r-total").textContent = fmt(o["총결제금액"]);
+      document.getElementById("resultBox").style.display = "block";
     }
 
     document.getElementById("searchBtn").addEventListener("click", async () => {
@@ -96,8 +124,13 @@
       const phone = document.getElementById("phone").value.trim();
       const errMsg = document.getElementById("errMsg");
       const loadingMsg = document.getElementById("loadingMsg");
+
       errMsg.textContent = "";
       loadingMsg.style.display = "none";
+      document.getElementById("orderListBox").style.display = "none";
+      document.getElementById("resultBox").style.display = "none";
+      allOrders = null;
+      selectedOrder = null;
 
       if (!buyerName || !phone) {
         errMsg.textContent = "담당자명과 연락처를 모두 입력해주세요.";
@@ -115,30 +148,67 @@
           return;
         }
 
-        const o = data.order;
-        document.getElementById("receiptDate").textContent = `결제일시: ${o["저장시각"] || ""}`;
-        document.getElementById("r-refNo").textContent = o["발주번호"] || "";
-        document.getElementById("r-paymentId").textContent = o["결제ID"] || "";
-        document.getElementById("r-company").textContent = o["업체명"] || "";
-        document.getElementById("r-buyer").textContent = o["담당자명"] || "";
-        document.getElementById("r-phone").textContent = o["연락처"] || "";
-        document.getElementById("r-address").textContent = o["배송주소"] || "";
-        document.getElementById("r-item").textContent = o["상품명"] || "";
-        document.getElementById("r-unitPrice").textContent = fmt(o["단가"]);
-        document.getElementById("r-qty").textContent = `${o["수량"]}개`;
-        document.getElementById("r-itemAmount").textContent = fmt(o["상품금액"]);
-        document.getElementById("r-shipping").textContent = fmt(o["배송비"]);
-        document.getElementById("r-total").textContent = fmt(o["총결제금액"]);
+        // 1건
+        if (data.order) {
+          selectedOrder = data.order;
+          fillReceipt(selectedOrder);
+          document.getElementById("backBtn").style.display = "none";
+        }
 
-        document.getElementById("resultBox").style.display = "block";
-        if (window._autoPrint) { window._autoPrint = false; setTimeout(function(){ window.print(); }, 300); }
+        // 여러 건
+        if (data.orders) {
+          allOrders = data.orders;
+          const list = document.getElementById("orderList");
+          list.innerHTML = "";
+          allOrders.forEach((o, idx) => {
+            const div = document.createElement("div");
+            div.className = "order-list-item";
+            div.innerHTML = `
+              <div class="item-name">${o["상품명"] || ""}</div>
+              <div class="item-meta">
+                발주번호: ${o["발주번호"] || ""} &nbsp;|&nbsp;
+                수량: ${o["수량"]}개 &nbsp;|&nbsp;
+                결제금액: ${fmt(o["총결제금액"])} &nbsp;|&nbsp;
+                결제일: ${o["저장시각"] ? String(o["저장시각"]).slice(0, 10) : ""}
+              </div>
+            `;
+            div.addEventListener("click", () => {
+              document.querySelectorAll(".order-list-item").forEach(el => el.classList.remove("selected"));
+              div.classList.add("selected");
+              selectedOrder = allOrders[idx];
+            });
+            list.appendChild(div);
+          });
+          document.getElementById("orderListBox").style.display = "block";
+        }
       } catch (e) {
         loadingMsg.style.display = "none";
         errMsg.textContent = "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
     });
 
-    document.getElementById("printBtn").addEventListener("click", function() {
+    // 목록에서 선택 후 영수증 보기
+    document.getElementById("selectBtn").addEventListener("click", () => {
+      const selectErrMsg = document.getElementById("selectErrMsg");
+      if (!selectedOrder) {
+        selectErrMsg.textContent = "영수증을 볼 주문을 선택해주세요.";
+        return;
+      }
+      selectErrMsg.textContent = "";
+      document.getElementById("orderListBox").style.display = "none";
+      fillReceipt(selectedOrder);
+      document.getElementById("backBtn").style.display = "block";
+    });
+
+    // 다른 주문 보기
+    document.getElementById("backBtn").addEventListener("click", () => {
+      document.getElementById("resultBox").style.display = "none";
+      document.getElementById("orderListBox").style.display = "block";
+      selectedOrder = null;
+      document.querySelectorAll(".order-list-item").forEach(el => el.classList.remove("selected"));
+    });
+
+    document.getElementById("printBtn").addEventListener("click", function () {
       window.print();
     });
   </script>

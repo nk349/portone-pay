@@ -98,11 +98,15 @@
     let allOrders = null;
     let selectedOrder = null;
 
-    function fmt(n) {
-      return Number(n || 0).toLocaleString("ko-KR") + "원";
-    }
+  function fmt(n) {
+  return Number(n || 0).toLocaleString("ko-KR") + "원";
+}
 
-    function fillReceipt(o) {
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function fillReceipt(o) {
       document.getElementById("receiptDate").textContent = `결제일시: ${o["저장시각"] || ""}`;
       document.getElementById("r-refNo").textContent = o["발주번호"] || "";
       document.getElementById("r-paymentId").textContent = o["결제ID"] || "";
@@ -121,7 +125,7 @@
 
     document.getElementById("searchBtn").addEventListener("click", async () => {
       const buyerName = document.getElementById("buyerName").value.trim();
-      const phone = document.getElementById("phone").value.trim();
+      const phone = normalizePhone(document.getElementById("phone").value);
       const errMsg = document.getElementById("errMsg");
       const loadingMsg = document.getElementById("loadingMsg");
 

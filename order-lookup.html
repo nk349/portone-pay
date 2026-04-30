@@ -67,6 +67,13 @@
       <div class="hr no-print"></div>
       <p class="receipt-title">켬 스튜디오 주문 영수증</p>
       <p class="receipt-sub" id="receiptDate"></p>
+      <div class="hr"></div>
+<div class="info-row"><span class="label">상호</span><span class="value" id="c-name"></span></div>
+<div class="info-row"><span class="label">대표자</span><span class="value" id="c-owner"></span></div>
+<div class="info-row"><span class="label">사업자등록번호</span><span class="value" id="c-biz"></span></div>
+<div class="info-row"><span class="label">주소</span><span class="value" id="c-address"></span></div>
+<div class="info-row"><span class="label">연락처</span><span class="value" id="c-phone"></span></div>
+<div class="hr"></div>
       <div class="info-row"><span class="label">발주번호</span><span class="value" id="r-refNo"></span></div>
       <div class="info-row"><span class="label">결제번호</span><span class="value" id="r-paymentId"></span></div>
       <div class="info-row"><span class="label">업체명</span><span class="value" id="r-company"></span></div>
@@ -115,6 +122,12 @@ function fillReceipt(o) {
       document.getElementById("r-buyer").textContent = o["담당자명"] || "";
       document.getElementById("r-phone").textContent = o["연락처"] || "";
       document.getElementById("r-address").textContent = o["배송주소"] || "";
+  // 회사 정보 (고정값)
+document.getElementById("c-name").textContent = "켬";
+document.getElementById("c-owner").textContent = "송나겸"; 
+document.getElementById("c-biz").textContent = "198-12-02521"; 
+document.getElementById("c-address").textContent = "경기도 남양주시 호평로 94 2103-1602";
+document.getElementById("c-phone").textContent = "010-5889-4012";
 const carrier = o["택배사"] || "편의점택배";
 const trackingEl = document.getElementById("r-tracking");
 

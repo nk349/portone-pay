@@ -191,22 +191,54 @@
       return qty >= CONFIG.BULK_QTY ? CONFIG.PRICE_BULK : CONFIG.PRICE_NORMAL;
     }
 
-    function getShippingFee(qty, isRemote) {
-      if (qty <= 0) return 0;
-      const boxes = qty < CONFIG.BUNDLE_SIZE ? 1 : Math.ceil(qty / CONFIG.BUNDLE_SIZE);
-      const basePerBox = qty < CONFIG.BUNDLE_SIZE ? CONFIG.SHIPPING_SINGLE : CONFIG.SHIPPING_BUNDLE;
-      const remoteExtra = isRemote ? CONFIG.SHIPPING_REMOTE_EXTRA : 0;
-      return boxes * (basePerBox + remoteExtra);
-    }
+ function getShippingTierFee(qty) {
+  if (qty <= 0) return 0;
+  if (qty <= 10) return 5000;
+  if (qty <= 20) return 6000;
+  return 7000; // 21~30개
+}
 
-    function getShippingDesc(qty, isRemote) {
-      if (qty <= 0) return "";
-      const boxes = qty < CONFIG.BUNDLE_SIZE ? 1 : Math.ceil(qty / CONFIG.BUNDLE_SIZE);
-      const basePerBox = qty < CONFIG.BUNDLE_SIZE ? CONFIG.SHIPPING_SINGLE : CONFIG.SHIPPING_BUNDLE;
-      const remoteExtra = isRemote ? CONFIG.SHIPPING_REMOTE_EXTRA : 0;
-      const total = boxes * (basePerBox + remoteExtra);
-      return `박스 ${boxes}개 × ${(basePerBox + remoteExtra).toLocaleString()}원 = 배송비 ${total.toLocaleString()}원${isRemote ? " (도서산간 추가 적용)" : ""}`;
-    }
+function getShippingFee(qty, isRemote) {
+  if (qty <= 0) return 0;
+
+  const fullBoxes = Math.floor(qty / 30);
+  const remainder = qty % 30;
+
+  let baseFee = fullBoxes * 7000;
+
+  if (remainder > 0) {
+    baseFee += getShippingTierFee(remainder);
+  }
+
+  const boxes = Math.ceil(qty / 30);
+  const remoteExtra = isRemote ? boxes * CONFIG.SHIPPING_REMOTE_EXTRA : 0;
+
+  return baseFee + remoteExtra;
+}
+
+function getShippingDesc(qty, isRemote) {
+  if (qty <= 0) return "";
+
+  const fullBoxes = Math.floor(qty / 30);
+  const remainder = qty % 30;
+  const boxes = Math.ceil(qty / 30);
+
+  const parts = [];
+
+  if (fullBoxes > 0) {
+    parts.push(`30개 박스 ${fullBoxes}개 × 7,000원`);
+  }
+
+  if (remainder > 0) {
+    parts.push(`추가 ${remainder}개 배송비 ${getShippingTierFee(remainder).toLocaleString()}원`);
+  }
+
+  const baseFee = getShippingFee(qty, false);
+  const remoteExtra = isRemote ? boxes * CONFIG.SHIPPING_REMOTE_EXTRA : 0;
+  const total = baseFee + remoteExtra;
+
+  return `${parts.join(" + ")} = 배송비 ${total.toLocaleString()}원${isRemote ? " (도서산간 추가 적용)" : ""}`;
+}
 
     function setResult_(text, kind) {
       const el = document.getElementById("result");

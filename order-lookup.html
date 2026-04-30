@@ -127,9 +127,9 @@ const trackingNos = [
 ].filter(Boolean);
 
 if (trackingNos.length > 0) {
-  trackingEl.innerHTML = trackingNos.map((no, idx) => {
-    return `${carrier} ${idx + 1}번 박스: ${no}`;
-  }).join("<br>");
+trackingEl.innerHTML = trackingNos.map((no, idx) => {
+  return `${carrier} ${idx + 1}번 박스: ${no}`;
+}).join("<br>");
 } else {
   trackingEl.textContent = "배송 준비 중";
 }

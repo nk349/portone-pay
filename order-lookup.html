@@ -115,19 +115,28 @@ function fillReceipt(o) {
       document.getElementById("r-buyer").textContent = o["담당자명"] || "";
       document.getElementById("r-phone").textContent = o["연락처"] || "";
       document.getElementById("r-address").textContent = o["배송주소"] || "";
-  const carrier = o["택배사"] || "편의점택배";
-const trackingNo = String(o["운송장번호"] || "").trim();
+const carrier = o["택배사"] || "편의점택배";
 const trackingEl = document.getElementById("r-tracking");
 
-if (trackingNo) {
-  const cleanNo = trackingNo.replace(/\D/g, "");
-  trackingEl.innerHTML = `
-    <a href="https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${encodeURIComponent(cleanNo)}"
-       target="_blank"
-       rel="noopener noreferrer">
-      ${carrier} ${trackingNo} 배송조회
-    </a>
-  `;
+const trackingNos = [
+  String(o["운송장번호1"] || "").trim(),
+  String(o["운송장번호2"] || "").trim(),
+  String(o["운송장번호3"] || "").trim(),
+  String(o["운송장번호4"] || "").trim(),
+  String(o["운송장번호5"] || "").trim(),
+].filter(Boolean);
+
+if (trackingNos.length > 0) {
+  trackingEl.innerHTML = trackingNos.map((no, idx) => {
+    const cleanNo = no.replace(/\D/g, "");
+    return `
+      <a href="https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${encodeURIComponent(cleanNo)}"
+         target="_blank"
+         rel="noopener noreferrer">
+        ${idx + 1}번 박스 배송조회
+      </a>
+    `;
+  }).join("<br>");
 } else {
   trackingEl.textContent = "배송 준비 중";
 }

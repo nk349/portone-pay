@@ -73,6 +73,7 @@
       <div class="info-row"><span class="label">담당자</span><span class="value" id="r-buyer"></span></div>
       <div class="info-row"><span class="label">연락처</span><span class="value" id="r-phone"></span></div>
       <div class="info-row"><span class="label">배송주소</span><span class="value" id="r-address"></span></div>
+      <div class="info-row"><span class="label">배송조회</span><span class="value" id="r-tracking"></span></div>
       <div class="hr"></div>
       <div class="info-row"><span class="label">상품명</span><span class="value" id="r-item"></span></div>
       <div class="info-row"><span class="label">단가</span><span class="value" id="r-unitPrice"></span></div>
@@ -114,6 +115,22 @@ function fillReceipt(o) {
       document.getElementById("r-buyer").textContent = o["담당자명"] || "";
       document.getElementById("r-phone").textContent = o["연락처"] || "";
       document.getElementById("r-address").textContent = o["배송주소"] || "";
+  const carrier = o["택배사"] || "편의점택배";
+const trackingNo = String(o["운송장번호"] || "").trim();
+const trackingEl = document.getElementById("r-tracking");
+
+if (trackingNo) {
+  const cleanNo = trackingNo.replace(/\D/g, "");
+  trackingEl.innerHTML = `
+    <a href="https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${encodeURIComponent(cleanNo)}"
+       target="_blank"
+       rel="noopener noreferrer">
+      ${carrier} ${trackingNo} 배송조회
+    </a>
+  `;
+} else {
+  trackingEl.textContent = "배송 준비 중";
+}
       document.getElementById("r-item").textContent = o["상품명"] || "";
       document.getElementById("r-unitPrice").textContent = fmt(o["단가"]);
       document.getElementById("r-qty").textContent = `${o["수량"]}개`;

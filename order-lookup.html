@@ -129,8 +129,17 @@ const trackingNos = [
 if (trackingNos.length > 0) {
   trackingEl.innerHTML = trackingNos.map((no, idx) => {
     const cleanNo = no.replace(/\D/g, "");
+
+    let url = "";
+
+    if (carrier.includes("CJ")) {
+      url = `https://trace.cjlogistics.com/next/tracking.html?wblNo=${encodeURIComponent(cleanNo)}`;
+    } else {
+      url = `https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${encodeURIComponent(cleanNo)}`;
+    }
+
     return `
-      <a href="https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${encodeURIComponent(cleanNo)}"
+      <a href="${url}"
          target="_blank"
          rel="noopener noreferrer">
         ${idx + 1}번 박스 배송조회

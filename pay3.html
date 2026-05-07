@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>업체 결제 (수량형) - 아두이노 조이트로프</title>
+  <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; line-height: 1.5; }
+    .card { max-width: 560px; margin: 0 auto; border: 1px solid #ddd; border-radius: 12px; padding: 20px; }
+    h2 { margin: 0 0 8px 0; }
+    .muted { color: #666; font-size: 13px; margin: 8px 0 14px; }
+    .row { display: flex; gap: 10px; margin: 10px 0; }
+    .col { flex: 1; }
+    label { display: block; font-size: 12px; color: #444; margin: 0 0 6px; }
+    input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
+    input[readonly], input:disabled { background: #f7f7f7; }
+    button { width: 100%; padding: 14px 16px; font-size: 16px; border: 0; border-radius: 10px; cursor: pointer; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .warn { color: #b45309; font-size: 13px; margin-top: 10px; }
+    .ok { color: #166534; font-size: 13px; margin-top: 10px; }
+    .err { color: #991b1b; font-size: 13px; margin-top: 10px; }
+    .hr { height: 1px; background: #eee; margin: 14px 0; }
+    .price-notice { color: #1d4ed8; font-size: 13px; margin: 4px 0 0 0; }
+    .shipping-notice { color: #666; font-size: 12px; margin: 4px 0 0 0; }
+    .soldout-notice { color: #991b1b; font-size: 13px; margin-top: 8px; display: none; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #fff; border-radius: 16px; padding: 36px 28px 28px; max-width: 340px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+    .modal-icon { width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .modal-icon svg { width: 36px; height: 36px; }
+    .modal-title { font-size: 20px; font-weight: 700; color: #166534; margin: 0 0 8px; }
+    .modal-desc { font-size: 14px; color: #444; margin: 0 0 6px; line-height: 1.6; }
+    .modal-id { font-size: 11px; color: #999; margin: 8px 0 20px; word-break: break-all; }
+    .modal-btn { width: 100%; padding: 12px; background: #166534; color: #fff; border: 0; border-radius: 10px; font-size: 15px; cursor: pointer; }
+    .modal-btn-outline { width: 100%; padding: 10px; background: #fff; color: #166534; border: 1.5px solid #166534; border-radius: 10px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>업체 결제 (수량형)</h2>
+    <p class="muted">결제는 카드 기준입니다. 팝업 차단을 해제해주세요. 모바일 결제 후 화면이 자동 복귀됩니다.</p>
+
+    <div class="row">
+      <div class="col">
+        <label>업체명 (필수)</label>
+        <input id="company" type="text" placeholder="예: ○○학교 / ○○기업" required />
+      </div>
+      <div class="col">
+        <label>발주 번호 (자동)</label>
+        <input id="refNo" type="text" readonly />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>상품명</label>
+        <input id="itemName" type="text" value="아두이노 조이트로프" />
+      </div>
+      <div class="col">
+        <label>담당자명 (필수)</label>
+        <input id="buyerName" type="text" placeholder="예: 홍길동" required />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>연락처 (필수)</label>
+        <input id="phoneNumber" type="tel" placeholder="예: 01012345678" required />
+      </div>
+      <div class="col">
+        <label>이메일 (선택)</label>
+        <input id="email" type="email" placeholder="예: buyer@company.com" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>배송 주소 (필수)</label>
+        <input id="address" type="text" placeholder="예: 경기도 남양주시 ○○로 ○○ (상세주소)" required />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col" style="display:flex; align-items:center; gap:8px; padding-top:4px;">
+        <input id="isRemote" type="checkbox" style="width:auto; margin:0;" />
+        <label for="isRemote" style="margin:0; font-size:13px; color:#444; cursor:pointer;">제주 및 도서산간 지역 (배송비 추가)</label>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <div class="col">
+        <label>단가 (원)</label>
+        <input id="unitPrice" type="number" readonly />
+      </div>
+      <div class="col">
+        <label>수량 (필수)</label>
+        <input id="qty" type="number" min="1" step="1" value="1" required />
+      </div>
+    </div>
+    <p class="price-notice" id="priceNotice"></p>
+    <p id="soldoutNotice" class="soldout-notice"></p>
+
+    <div class="row">
+      <div class="col">
+        <label>배송비 (원)</label>
+        <input id="shippingFee" type="number" readonly />
+      </div>
+      <div class="col">
+        <label>상품 금액 (원)</label>
+        <input id="itemAmount" type="number" readonly />
+      </div>
+    </div>
+    <p class="shipping-notice" id="shippingNotice"></p>
+
+    <div class="row">
+      <div class="col">
+        <label>총액 (배송비 포함, 원)</label>
+        <input id="totalAmount" type="number" readonly />
+      </div>
+      <div class="col">
+        <label>주문명 (자동)</label>
+        <input id="orderName" type="text" readonly />
+      </div>
+    </div>
+
+    <button id="payBtn">결제 진행</button>
+    <p id="result" class="muted"></p>
+  </div>
+
+  <div class="modal-overlay" id="successModal">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <p class="modal-title">결제 완료</p>
+      <p class="modal-desc" id="modalDesc"></p>
+      <p class="modal-id" id="modalId"></p>
+      <button class="modal-btn" id="modalCloseBtn">확인</button>
+      <button class="modal-btn-outline" id="modalLookupBtn">주문 조회 / 영수증 출력</button>
+    </div>
+  </div>
+
+  <script>
+    // =====================================================
+    // 설정값 — 가격/배송비 변경 시 여기만 수정하세요
+    // =====================================================
+const CONFIG = {
+  PRODUCT_KEY: "zoetrope",
+  PRICE_NORMAL: 30000,
+  PRICE_BULK: 30000,
+  BULK_QTY: 999999,
+  MAX_QTY: 100,
+  BUNDLE_SIZE: 30,
+  SHIPPING_SINGLE: 5000,
+  SHIPPING_BUNDLE: 7000,
+  SHIPPING_REMOTE_EXTRA: 2000,
+};
+
+    const STORE_ID = "store-ca55a732-987a-45f4-9ea0-85b8586352e6";
+    const CHANNEL_KEY = "channel-key-434e0b0b-3307-4b42-a16a-7ced0b0dff86";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNNN9dRd3EATcAZV6uXx90TtTo4ryIPv-yI1BuXAFGAPfT-OnJR_dsBrc_LcoaeztPlw/exec";
+
+    function generateRefNo() {
+      const now = new Date();
+      const date = now.getFullYear().toString()
+        + String(now.getMonth() + 1).padStart(2, "0")
+        + String(now.getDate()).padStart(2, "0");
+      const time = String(now.getHours()).padStart(2, "0")
+        + String(now.getMinutes()).padStart(2, "0");
+      return `ORD-${date}-${time}`;
+    }
+
+    function toInt_(v, fallback) {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.trunc(n) : fallback;
+    }
+
+    function sanitizeRef_(s) {
+      return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16);
+    }
+
+    function newPaymentId(refNo) {
+      const ts = Date.now().toString(36);
+      const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+      const ref = sanitizeRef_(refNo);
+      return ref ? `p_${ts}_${ref}_${rand}` : `p_${ts}_${rand}`;
+    }
+
+    function getUnitPrice(qty) {
+      return qty >= CONFIG.BULK_QTY ? CONFIG.PRICE_BULK : CONFIG.PRICE_NORMAL;
+    }
+
+ function getShippingTierFee(qty) {
+  if (qty <= 0) return 0;
+  if (qty <= 10) return 5000;
+  if (qty <= 20) return 6000;
+  return 7000; // 21~30개
+}
+
+function getShippingFee(qty, isRemote) {
+  if (qty <= 0) return 0;
+
+  const fullBoxes = Math.floor(qty / 30);
+  const remainder = qty % 30;
+
+  let baseFee = fullBoxes * 7000;
+
+  if (remainder > 0) {
+    baseFee += getShippingTierFee(remainder);
+  }
+
+  const boxes = Math.ceil(qty / 30);
+  const remoteExtra = isRemote ? boxes * CONFIG.SHIPPING_REMOTE_EXTRA : 0;
+
+  return baseFee + remoteExtra;
+}
+
+function getShippingDesc(qty, isRemote) {
+  if (qty <= 0) return "";
+
+  const fullBoxes = Math.floor(qty / 30);
+  const remainder = qty % 30;
+  const boxes = Math.ceil(qty / 30);
+
+  const parts = [];
+
+  if (fullBoxes > 0) {
+    parts.push(`30개 박스 ${fullBoxes}개 × 7,000원`);
+  }
+
+  if (remainder > 0) {
+    parts.push(`추가 ${remainder}개 배송비 ${getShippingTierFee(remainder).toLocaleString()}원`);
+  }
+
+  const baseFee = getShippingFee(qty, false);
+  const remoteExtra = isRemote ? boxes * CONFIG.SHIPPING_REMOTE_EXTRA : 0;
+  const total = baseFee + remoteExtra;
+
+  return `${parts.join(" + ")} = 배송비 ${total.toLocaleString()}원${isRemote ? " (도서산간 추가 적용)" : ""}`;
+}
+
+    function setResult_(text, kind) {
+      const el = document.getElementById("result");
+      el.className = kind || "muted";
+      el.textContent = text;
+    }
+
+    async function fetchStock() {
+      try {
+        const res = await fetch(`${APPS_SCRIPT_URL}?action=stock&productKey=${CONFIG.PRODUCT_KEY}`);
+        const data = await res.json();
+        if (data.ok) return data.qty;
+        return null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function syncDerivedFields_() {
+      const company = document.getElementById("company").value.trim();
+      const refNo = document.getElementById("refNo").value.trim();
+      const itemName = document.getElementById("itemName").value.trim() || "상품";
+      const qty = toInt_(document.getElementById("qty").value, 1);
+      const isRemote = document.getElementById("isRemote").checked;
+
+      const isOverMax = qty > CONFIG.MAX_QTY;
+      const soldoutEl = document.getElementById("soldoutNotice");
+      soldoutEl.style.display = isOverMax ? "block" : "none";
+      soldoutEl.textContent = isOverMax
+        ? `⚠️ 최대 주문 수량(${CONFIG.MAX_QTY}개)을 초과하였습니다.`
+        : "";
+      document.getElementById("payBtn").disabled = isOverMax;
+
+      const unitPrice = getUnitPrice(qty);
+      document.getElementById("unitPrice").value = unitPrice;
+    document.getElementById("priceNotice").textContent =
+  `주문제작품 단가 ${CONFIG.PRICE_NORMAL.toLocaleString()}원 적용 중`;
+
+      const itemAmount = unitPrice * Math.max(qty, 0);
+      document.getElementById("itemAmount").value = itemAmount;
+
+      const shippingFee = getShippingFee(qty, isRemote);
+      document.getElementById("shippingFee").value = shippingFee;
+      document.getElementById("shippingNotice").textContent = getShippingDesc(qty, isRemote);
+
+      document.getElementById("totalAmount").value = itemAmount + shippingFee;
+
+      const parts = [];
+      if (refNo) parts.push(refNo);
+      if (company) parts.push(company);
+      parts.push(itemName);
+      parts.push(`${qty}개`);
+      document.getElementById("orderName").value = parts.join(" / ");
+    }
+
+    function lockForm_() {
+      ["company", "itemName", "buyerName", "phoneNumber", "email", "address", "qty"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
+      const btn = document.getElementById("payBtn");
+      btn.disabled = true;
+      btn.textContent = "결제 완료";
+    }
+
+    function showSuccessModal(orderName, totalAmount, paymentId) {
+      document.getElementById("modalDesc").textContent = `${orderName} / ${toInt_(totalAmount, 0).toLocaleString("ko-KR")}원`;
+      document.getElementById("modalId").textContent = `주문번호: ${paymentId}`;
+      document.getElementById("successModal").classList.add("show");
+      lockForm_();
+    }
+
+    async function logOrder_(payload) {
+      await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    async function logPaymentFail_(payload) {
+  await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({
+      type: "payment_fail",
+      ...payload,
+    }),
+  });
+}
+    async function requestPay() {
+      syncDerivedFields_();
+
+      const company = document.getElementById("company").value.trim();
+      const refNo = document.getElementById("refNo").value.trim();
+      const itemName = document.getElementById("itemName").value.trim() || "상품";
+      const buyerName = document.getElementById("buyerName").value.trim();
+      const phoneNumber = document.getElementById("phoneNumber").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const address = document.getElementById("address").value.trim();
+      const qty = toInt_(document.getElementById("qty").value, 0);
+      const isRemote = document.getElementById("isRemote").checked;
+      const unitPrice = toInt_(document.getElementById("unitPrice").value, 0);
+      const itemAmount = unitPrice * qty;
+      const shippingFee = getShippingFee(qty, isRemote);
+      const totalAmount = itemAmount + shippingFee;
+      const orderName = document.getElementById("orderName").value || "주문";
+
+      if (!company) { setResult_("업체명을 입력해주세요.", "err"); return; }
+      if (!buyerName) { setResult_("담당자명을 입력해주세요.", "err"); return; }
+      if (!phoneNumber) { setResult_("연락처를 입력해주세요.", "err"); return; }
+      if (!address) { setResult_("배송 주소를 입력해주세요.", "err"); return; }
+      if (qty <= 0) { setResult_("수량을 1 이상으로 입력해주세요.", "err"); return; }
+      if (qty > CONFIG.MAX_QTY) { setResult_("주문 가능 수량을 초과하였습니다.", "err"); return; }
+
+      // 결제 직전 실시간 재고 확인
+      setResult_("재고 확인 중입니다...", "muted");
+      const stockQty = await fetchStock();
+      if (stockQty !== null && qty > stockQty) {
+        setResult_(
+          stockQty === 0
+            ? "현재 재고가 소진되었습니다. 문의해주세요."
+            : `현재 주문 가능 수량은 ${stockQty}개입니다.`,
+          "err"
+        );
+        return;
+      }
+      setResult_("", "muted");
+
+      const paymentId = newPaymentId(refNo);
+      const base = `${location.origin}${location.pathname}${location.search || ""}`;
+      const redirectUrl = `${base}${base.includes("?") ? "&" : "?"}_on=${encodeURIComponent(orderName)}&_oa=${totalAmount}`;
+
+      const response = await window.PortOne.requestPayment({
+        storeId: STORE_ID,
+        channelKey: CHANNEL_KEY,
+        paymentId,
+        orderName,
+        totalAmount,
+        currency: "CURRENCY_KRW",
+        payMethod: "CARD",
+        redirectUrl,
+        customer: {
+          fullName: buyerName || company,
+          phoneNumber: phoneNumber || undefined,
+          email: email || undefined,
+        },
+      });
+
+if (response && response.code !== undefined) {
+  try {
+    await logPaymentFail_({
+      paymentId,
+      refNo,
+      orderName,
+      company,
+      buyerName,
+      phoneNumber,
+      email,
+      address,
+      itemName,
+      productKey: CONFIG.PRODUCT_KEY,
+      qty,
+      totalAmount,
+      failCode: response.code || "",
+      failMessage: response.message || "",
+    });
+  } catch (e) {
+    console.error("결제 실패 저장 실패", e);
+  }
+
+  setResult_(`실패: ${response.code} / ${response.message || ""}`, "err");
+  return;
+}
+
+      if (response && response.paymentId) {
+        showSuccessModal(orderName, totalAmount, response.paymentId);
+        try {
+          await logOrder_({
+            paymentId: response.paymentId,
+            orderName, company, refNo, itemName,
+            productKey: CONFIG.PRODUCT_KEY,
+            unitPrice, qty, itemAmount, shippingFee, totalAmount,
+            buyerName, phoneNumber, email, address,
+          });
+        } catch (e) {
+          setResult_(`결제 요청은 완료. 주문 기록은 확인 필요: ${response.paymentId}`, "warn");
+        }
+      } else {
+        setResult_("요청 완료. 모바일 결제 후 화면이 자동 복귀됩니다.", "muted");
+      }
+    }
+
+    function getParams_() {
+      const u = new URL(location.href);
+      return {
+        item: u.searchParams.get("item"),
+        company: u.searchParams.get("company"),
+        paymentId: u.searchParams.get("paymentId"),
+        code: u.searchParams.get("code"),
+        message: u.searchParams.get("message"),
+        _on: u.searchParams.get("_on"),
+        _oa: u.searchParams.get("_oa"),
+      };
+    }
+
+    (function init() {
+      const p = getParams_();
+      document.getElementById("refNo").value = generateRefNo();
+      if (p.item) document.getElementById("itemName").value = p.item;
+      if (p.company) document.getElementById("company").value = p.company;
+
+      if (p.paymentId) {
+        if (p.code) {
+          setResult_(`실패: ${p.code} / ${p.message || ""}`, "err");
+        } else {
+          showSuccessModal(p._on ? decodeURIComponent(p._on) : "주문", toInt_(p._oa, 0), p.paymentId);
+        }
+        const u = new URL(location.href);
+        ["paymentId", "code", "message", "_on", "_oa"].forEach(k => u.searchParams.delete(k));
+        history.replaceState({}, "", u.pathname + (u.search !== "?" ? u.search : ""));
+      }
+
+      syncDerivedFields_();
+
+      ["company", "itemName", "qty"].forEach(id => {
+        document.getElementById(id).addEventListener("input", syncDerivedFields_);
+      });
+      document.getElementById("isRemote").addEventListener("change", syncDerivedFields_);
+
+      document.getElementById("modalCloseBtn").addEventListener("click", () => {
+        document.getElementById("successModal").classList.remove("show");
+      });
+      document.getElementById("modalLookupBtn").addEventListener("click", () => {
+        window.open("https://nk349.github.io/portone-pay/order-lookup.html", "_blank");
+      });
+document.getElementById("payBtn").addEventListener("click", async () => {
+  setResult_("", "muted");
+  try {
+    await requestPay();
+  } catch (e) {
+    try {
+      const company = document.getElementById("company").value.trim();
+      const refNo = document.getElementById("refNo").value.trim();
+      const itemName = document.getElementById("itemName").value.trim() || "상품";
+      const buyerName = document.getElementById("buyerName").value.trim();
+      const phoneNumber = document.getElementById("phoneNumber").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const address = document.getElementById("address").value.trim();
+      const qty = toInt_(document.getElementById("qty").value, 0);
+      const totalAmount = toInt_(document.getElementById("totalAmount").value, 0);
+      const orderName = document.getElementById("orderName").value || "주문";
+
+      await logPaymentFail_({
+        paymentId: "",
+        refNo,
+        orderName,
+        company,
+        buyerName,
+        phoneNumber,
+        email,
+        address,
+        itemName,
+        productKey: CONFIG.PRODUCT_KEY,
+        qty,
+        totalAmount,
+        failCode: "CLIENT_ERROR",
+        failMessage: e?.message || String(e),
+      });
+    } catch (logErr) {
+      console.error("예외 실패 저장 실패", logErr);
+    }
+
+    setResult_(`오류: ${e?.message || e}`, "err");
+  }
+});
+    })();
+  </script>
+</body>
+</html>

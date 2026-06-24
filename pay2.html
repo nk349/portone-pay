@@ -237,7 +237,7 @@ function getShippingDesc(qty, isRemote) {
   const remoteExtra = isRemote ? boxes * CONFIG.SHIPPING_REMOTE_EXTRA : 0;
   const total = baseFee + remoteExtra;
 
-  return `${parts.join(" + ")} = 배송비 ${total.toLocaleString()}원${isRemote ? " (도서산간 추가 적용)" : ""}`;
+  return `${parts.join(" + ")} = 배송비 ${total.toLocaleString()}원${isRemote ? " (도서산간 추가비 적용)" : ""}`;
 }
 
     function setResult_(text, kind) {

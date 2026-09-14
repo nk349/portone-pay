@@ -82,12 +82,11 @@
         <input id="isRemote" type="checkbox" style="width:auto; margin:0;" />
         <label for="isRemote" style="margin:0; font-size:13px; color:#444; cursor:pointer;">제주 및 도서산간 지역 (배송비 추가)</label>
       </div>
-         <div class="col" style="display:flex; align-items:center; gap:8px; padding-top:4px;">
+      <div class="col" style="display:flex; align-items:center; gap:8px; padding-top:4px;">
         <input id="isPickup" type="checkbox" style="width:auto; margin:0;" />
         <label for="isPickup" style="margin:0; font-size:13px; color:#444; cursor:pointer;">직접수령 (배송비 없음)</label>
       </div>
     </div>
-    
 
     <div class="hr"></div>
 
@@ -286,10 +285,11 @@ function getShippingDesc(qty, isRemote) {
       const itemAmount = unitPrice * Math.max(qty, 0);
       document.getElementById("itemAmount").value = itemAmount;
 
-const shippingFee = isPickup ? 0 : getShippingFee(qty, isRemote);
-document.getElementById("shippingFee").value = shippingFee;
-document.getElementById("shippingNotice").textContent =
-  isPickup ? "직접수령으로 배송비가 부과되지 않습니다." : getShippingDesc(qty, isRemote);
+      const shippingFee = isPickup ? 0 : getShippingFee(qty, isRemote);
+      document.getElementById("shippingFee").value = shippingFee;
+      document.getElementById("shippingNotice").textContent = isPickup
+        ? "직접수령으로 배송비가 부과되지 않습니다."
+        : getShippingDesc(qty, isRemote);
 
       document.getElementById("totalAmount").value = itemAmount + shippingFee;
 
@@ -302,7 +302,7 @@ document.getElementById("shippingNotice").textContent =
     }
 
     function lockForm_() {
-      ["company", "itemName", "buyerName", "phoneNumber", "email", "address", "qty"].forEach(id => {
+      ["company", "itemName", "buyerName", "phoneNumber", "email", "address", "qty", "isRemote", "isPickup"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = true;
       });
@@ -477,8 +477,14 @@ if (response && response.code !== undefined) {
       ["company", "itemName", "qty"].forEach(id => {
         document.getElementById(id).addEventListener("input", syncDerivedFields_);
       });
-      document.getElementById("isRemote").addEventListener("change", syncDerivedFields_);
-      document.getElementById("isPickup").addEventListener("change", syncDerivedFields_);
+      document.getElementById("isRemote").addEventListener("change", event => {
+        if (event.target.checked) document.getElementById("isPickup").checked = false;
+        syncDerivedFields_();
+      });
+      document.getElementById("isPickup").addEventListener("change", event => {
+        if (event.target.checked) document.getElementById("isRemote").checked = false;
+        syncDerivedFields_();
+      });
 
       document.getElementById("modalCloseBtn").addEventListener("click", () => {
         document.getElementById("successModal").classList.remove("show");
